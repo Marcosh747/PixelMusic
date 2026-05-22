@@ -14,6 +14,7 @@ import com.theveloper.pixelplay.data.remote.youtube.SongDownloadWorker
 import com.theveloper.pixelplay.data.remote.youtube.PlaylistDownloadWorker
 import kotlinx.coroutines.flow.first
 import android.media.MediaMetadataRetriever
+import kotlin.math.absoluteValue
 import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.core.content.ContextCompat

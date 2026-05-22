@@ -11,6 +11,7 @@ import com.theveloper.pixelplay.data.model.youtube.UmihiSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -40,6 +41,21 @@ object YoutubeHelper {
 
     /** Register a locally-available file path for a YouTube video ID so playback is instant. */
     private val localFilePathCache = LruCache<String, String>(200)
+
+    suspend fun extractGenre(videoId: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val jsonString = YoutubeRequestHelper.getPlayerInfo(videoId)
+            val json = Json.parseToJsonElement(jsonString).jsonObject
+            val category = json["microformat"]
+                ?.jsonObject?.get("microformatDataRenderer")
+                ?.jsonObject?.get("category")
+                ?.jsonPrimitive?.contentOrNull
+            category?.takeIf { it.isNotBlank() && it != "Music" }
+        } catch (e: Exception) {
+            UmihiHelper.printe("Failed to extract genre: ${e.message}")
+            null
+        }
+    }
 
     fun extractYouTubeVideoId(url: String): String? {
         val uri = url.toUri()
@@ -705,9 +721,210 @@ object YoutubeHelper {
             return@withContext false
         }
     }
+
+    fun findObjectsWithKey(element: JsonElement, key: String, result: MutableList<JsonObject>) {
+        when (element) {
+            is JsonObject -> {
+                if (element.containsKey(key)) {
+                    element[key]?.jsonObject?.let { result.add(it) }
+                }
+                for (value in element.values) {
+                    findObjectsWithKey(value, key, result)
+                }
+            }
+            is JsonArray -> {
+                for (value in element) {
+                    findObjectsWithKey(value, key, result)
+                }
+            }
+            else -> {}
+        }
+    }
+
+    fun findContinuationToken(element: JsonElement): String? {
+        when (element) {
+            is JsonObject -> {
+                if (element.containsKey("nextContinuationData")) {
+                    return element["nextContinuationData"]?.jsonObject?.get("continuation")?.jsonPrimitive?.contentOrNull
+                }
+                if (element.containsKey("continuationEndpoint")) {
+                    return element["continuationEndpoint"]?.jsonObject?.get("continuationCommand")?.jsonObject?.get("token")?.jsonPrimitive?.contentOrNull
+                }
+                for (value in element.values) {
+                    val token = findContinuationToken(value)
+                    if (token != null) return token
+                }
+            }
+            is JsonArray -> {
+                for (value in element) {
+                    val token = findContinuationToken(value)
+                    if (token != null) return token
+                }
+            }
+            else -> {}
+        }
+        return null
+    }
+
+    fun extractAccountPlaylists(
+        jsonString: String,
+        settings: UmihiSettings
+    ): List<PlaylistItem> {
+        val root = Json.parseToJsonElement(jsonString)
+        val items = mutableListOf<JsonObject>()
+        findObjectsWithKey(root, "musicTwoRowItemRenderer", items)
+        findObjectsWithKey(root, "musicResponsiveListItemRenderer", items)
+
+        val playlistsList = mutableListOf<PlaylistItem>()
+        for (item in items) {
+            val title = item["title"]
+                ?.jsonObject?.get("runs")
+                ?.jsonArray?.getOrNull(0)
+                ?.jsonObject?.get("text")
+                ?.jsonPrimitive?.contentOrNull ?: continue
+
+            val browseId = item["navigationEndpoint"]
+                ?.jsonObject?.get("browseEndpoint")
+                ?.jsonObject?.get("browseId")
+                ?.jsonPrimitive?.contentOrNull ?: continue
+
+            if (browseId == "SE") continue
+
+            val thumbnailUrl = item["thumbnailRenderer"]?.let { getBestThumbnailUrl(it) }
+                ?: item["thumbnail"]?.let { getBestThumbnailUrl(it) }
+
+            playlistsList.add(PlaylistItem(id = browseId, title = title, thumbnailUrl = thumbnailUrl))
+        }
+
+        val continuationToken = findContinuationToken(root)
+        if (continuationToken != null) {
+            try {
+                val nextJson = YoutubeRequestHelper.requestContinuation(continuationToken, settings)
+                playlistsList.addAll(extractAccountPlaylists(nextJson, settings))
+            } catch (e: Exception) {
+                UmihiHelper.printe("Error fetching playlists continuation: ${e.message}")
+            }
+        }
+
+        return playlistsList.distinctBy { it.id }
+    }
+
+    fun extractAccountAlbums(
+        jsonString: String,
+        settings: UmihiSettings
+    ): List<AlbumItem> {
+        val root = Json.parseToJsonElement(jsonString)
+        val items = mutableListOf<JsonObject>()
+        findObjectsWithKey(root, "musicTwoRowItemRenderer", items)
+        findObjectsWithKey(root, "musicResponsiveListItemRenderer", items)
+
+        val albumsList = mutableListOf<AlbumItem>()
+        for (item in items) {
+            val title = item["title"]
+                ?.jsonObject?.get("runs")
+                ?.jsonArray?.getOrNull(0)
+                ?.jsonObject?.get("text")
+                ?.jsonPrimitive?.contentOrNull ?: continue
+
+            val browseId = item["navigationEndpoint"]
+                ?.jsonObject?.get("browseEndpoint")
+                ?.jsonObject?.get("browseId")
+                ?.jsonPrimitive?.contentOrNull ?: continue
+
+            val thumbnailUrl = item["thumbnailRenderer"]?.let { getBestThumbnailUrl(it) }
+                ?: item["thumbnail"]?.let { getBestThumbnailUrl(it) }
+
+            val subtitleRuns = item["subtitle"]?.jsonObject?.get("runs")?.jsonArray
+            val artist = if (subtitleRuns != null) {
+                val filterWords = setOf("album", "ep", "single", "playlist", "artist", "•", "·", " ")
+                subtitleRuns.mapNotNull { 
+                    it.jsonObject["text"]?.jsonPrimitive?.contentOrNull
+                }.firstOrNull { runText ->
+                    runText.trim().lowercase() !in filterWords && runText.trim().isNotEmpty()
+                }
+            } else null
+
+            albumsList.add(AlbumItem(id = browseId, title = title, artist = artist, thumbnailUrl = thumbnailUrl))
+        }
+
+        val continuationToken = findContinuationToken(root)
+        if (continuationToken != null) {
+            try {
+                val nextJson = YoutubeRequestHelper.requestContinuation(continuationToken, settings)
+                albumsList.addAll(extractAccountAlbums(nextJson, settings))
+            } catch (e: Exception) {
+                UmihiHelper.printe("Error fetching albums continuation: ${e.message}")
+            }
+        }
+
+        return albumsList.distinctBy { it.id }
+    }
+
+    fun extractAccountArtists(
+        jsonString: String,
+        settings: UmihiSettings
+    ): List<ArtistItem> {
+        val root = Json.parseToJsonElement(jsonString)
+        val items = mutableListOf<JsonObject>()
+        findObjectsWithKey(root, "musicTwoRowItemRenderer", items)
+        findObjectsWithKey(root, "musicResponsiveListItemRenderer", items)
+
+        val artistsList = mutableListOf<ArtistItem>()
+        for (item in items) {
+            val title = item["title"]
+                ?.jsonObject?.get("runs")
+                ?.jsonArray?.getOrNull(0)
+                ?.jsonObject?.get("text")
+                ?.jsonPrimitive?.contentOrNull ?: continue
+
+            val browseId = item["navigationEndpoint"]
+                ?.jsonObject?.get("browseEndpoint")
+                ?.jsonObject?.get("browseId")
+                ?.jsonPrimitive?.contentOrNull ?: continue
+
+            val thumbnailUrl = item["thumbnailRenderer"]?.let { getBestThumbnailUrl(it) }
+                ?: item["thumbnail"]?.let { getBestThumbnailUrl(it) }
+
+            artistsList.add(ArtistItem(id = browseId, name = title, thumbnailUrl = thumbnailUrl))
+        }
+
+        val continuationToken = findContinuationToken(root)
+        if (continuationToken != null) {
+            try {
+                val nextJson = YoutubeRequestHelper.requestContinuation(continuationToken, settings)
+                artistsList.addAll(extractAccountArtists(nextJson, settings))
+            } catch (e: Exception) {
+                UmihiHelper.printe("Error fetching artists continuation: ${e.message}")
+            }
+        }
+
+        return artistsList.distinctBy { it.id }
+    }
 }
 
 enum class SongInfoType(val index: Int) {
     TITLE(0),
     ARTIST(1),
 }
+
+@Serializable
+data class PlaylistItem(
+    val id: String,
+    val title: String,
+    val thumbnailUrl: String?
+)
+
+@Serializable
+data class AlbumItem(
+    val id: String,
+    val title: String,
+    val artist: String?,
+    val thumbnailUrl: String?
+)
+
+@Serializable
+data class ArtistItem(
+    val id: String,
+    val name: String,
+    val thumbnailUrl: String?
+)

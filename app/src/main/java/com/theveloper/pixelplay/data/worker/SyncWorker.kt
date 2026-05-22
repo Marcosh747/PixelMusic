@@ -29,6 +29,8 @@ import com.theveloper.pixelplay.data.database.SongArtistCrossRef
 import com.theveloper.pixelplay.data.database.SongEntity
 import com.theveloper.pixelplay.data.database.SourceType
 import com.theveloper.pixelplay.data.database.TelegramDao // Added
+import com.theveloper.pixelplay.data.database.FavoritesDao
+import com.theveloper.pixelplay.data.database.FavoritesEntity
 import com.theveloper.pixelplay.data.database.resolveAlbumArtUri
 import com.theveloper.pixelplay.data.database.serializeArtistRefs
 import com.theveloper.pixelplay.data.model.ArtistRef
@@ -84,7 +86,8 @@ constructor(
         private val neteaseDao: NeteaseDao,
         private val navidromeRepository: NavidromeRepository,
         private val playlistPreferencesRepository: PlaylistPreferencesRepository,
-        private val youtubeDatastoreRepository: com.theveloper.pixelplay.data.remote.youtube.DatastoreRepository
+        private val youtubeDatastoreRepository: com.theveloper.pixelplay.data.remote.youtube.DatastoreRepository,
+        private val favoritesDao: FavoritesDao
 ) : CoroutineWorker(appContext, workerParams) {
 
     private val contentResolver: ContentResolver = appContext.contentResolver
@@ -1870,8 +1873,44 @@ constructor(
                     )
                     // NOTE: Auto-download removed. Users download via playlist options or "Cache liked songs" setting.
                 }
+
+                // Sync with local favorites table
+                val remoteLikedSongIds = fullLikedPlaylist.songs.map { toUnifiedYoutubeSongId(it.youtubeId) }.toSet()
+                val localFavorites = favoritesDao.getFavoriteSongIdsOnce()
+                val localYoutubeFavorites = localFavorites.filter { it < -YOUTUBE_SONG_ID_OFFSET }.toSet()
+                
+                val songsToAdd = remoteLikedSongIds.filter { it !in localYoutubeFavorites }
+                val songsToRemove = localYoutubeFavorites.filter { it !in remoteLikedSongIds }
+                
+                if (songsToAdd.isNotEmpty()) {
+                    favoritesDao.insertAll(songsToAdd.map { FavoritesEntity(songId = it, isFavorite = true) })
+                }
+                songsToRemove.forEach { songId ->
+                    favoritesDao.removeFavorite(songId)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to sync remote YouTube liked songs", e)
+            }
+
+            // 3. Fetch missing genres (rate limited: 10 per sync cycle)
+            try {
+                val songsWithoutGenre = appDatabase.songRepository().getSongsWithoutGenre()
+                val targetSongs = songsWithoutGenre
+                    .sortedByDescending { it.downloadTimestamp }
+                    .take(10)
+
+                targetSongs.forEach { song ->
+                    val fetchedGenre = com.theveloper.pixelplay.data.remote.youtube.YoutubeHelper.extractGenre(song.youtubeId)
+                    if (fetchedGenre != null) {
+                        appDatabase.songRepository().updateGenre(song.youtubeId, fetchedGenre)
+                        val unifiedId = toUnifiedYoutubeSongId(song.youtubeId)
+                        musicDao.updateSongGenre(unifiedId, fetchedGenre)
+                        Log.i(TAG, "Fetched genre '$fetchedGenre' for YouTube song '${song.title}'")
+                    }
+                    kotlinx.coroutines.delay(500)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch and update YouTube genres", e)
             }
 
             val youtubePlaylists = appDatabase.playlistRepository().getAll()
@@ -1898,6 +1937,8 @@ constructor(
             youtubePlaylists.forEach { playlist ->
                 playlist.songs.forEach { allUniqueSongs[it.youtubeId] = it }
             }
+
+            val localFavorites = favoritesDao.getFavoriteSongIdsOnce().toSet()
 
             val songsToInsert = ArrayList<SongEntity>(allUniqueSongs.size)
             val artistsToInsert = LinkedHashMap<Long, ArtistEntity>()
@@ -1972,7 +2013,7 @@ constructor(
                         genre = ySong.genre?.takeIf { it.isNotBlank() } ?: YOUTUBE_GENRE,
                         filePath = ySong.audioFilePath ?: "",
                         parentDirectoryPath = YOUTUBE_PARENT_DIRECTORY,
-                        isFavorite = false,
+                        isFavorite = songId in localFavorites,
                         lyrics = null,
                         trackNumber = 0,
                         year = 0,
