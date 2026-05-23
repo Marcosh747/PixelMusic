@@ -100,24 +100,24 @@ jobs:
         id: cache-keystore
         uses: actions/cache@v5
         with:
-          path: vz-pixelplay.jks
-          key: ${{ runner.os }}-nightly-keystore-vz-pixelplay
+          path: vz-pixelmusic.jks
+          key: ${{ runner.os }}-nightly-keystore-vz-pixelmusic
 
       - name: Generate nightly keystore if not cached
         if: steps.cache-keystore.outputs.cache-hit != 'true'
         run: |
-          keytool -genkey -v -keystore vz-pixelplay.jks -alias pixelplay-nightly-key -keyalg RSA -keysize 4096 -validity 10000 \
+          keytool -genkey -v -keystore vz-pixelmusic.jks -alias pixelmusic-nightly-key -keyalg RSA -keysize 4096 -validity 10000 \
             -storepass 994273 -keypass 994273 \
-            -dname "CN=PixelPlay Nightly, OU=Dev, O=PixelPlay, L=World, S=World, C=US"
+            -dname "CN=PixelMusic Nightly, OU=Dev, O=PixelMusic, L=World, S=World, C=US"
 
       - name: Create keystore.properties
         run: |
           echo "storePassword=994273" > keystore.properties
-          echo "keyAlias=pixelplay-nightly-key" >> keystore.properties
+          echo "keyAlias=pixelmusic-nightly-key" >> keystore.properties
           echo "keyPassword=994273" >> keystore.properties
 
       - name: Build Phone nightly release APKs
-        run: gradle :app:assembleRelease -Ppixelplay.enableAbiSplits=true
+        run: gradle :app:assembleRelease -Ppixelmusic.enableAbiSplits=true
 
       - name: Verify Phone nightly split APKs
         run: |
@@ -133,7 +133,7 @@ jobs:
       - name: Upload Phone nightly split APK artifacts
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: PixelPlay-phone-nightly-${{ needs.changes.outputs.short-sha }}
+          name: PixelMusic-phone-nightly-${{ needs.changes.outputs.short-sha }}
           path: |
             app/build/outputs/apk/release/app-arm64-v8a-release.apk
             app/build/outputs/apk/release/app-armeabi-v7a-release.apk

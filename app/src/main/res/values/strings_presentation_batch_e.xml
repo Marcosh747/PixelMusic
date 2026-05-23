@@ -12,6 +12,7 @@
     <string name="presentation_batch_e_clear_queue_dialog_title">Clear queue</string>
     <string name="presentation_batch_e_clear_queue_dialog_message">Are you sure you want to clear all songs from the queue except the current one?</string>
     <string name="presentation_batch_e_next_up">Next up</string>
+    <string name="autoplay">Autoplay</string>
     <string name="presentation_batch_e_queue_subtitle_empty">Queue is empty for now.</string>
     <string name="presentation_batch_e_queue_source_fallback">Queue</string>
     <string name="presentation_batch_e_cd_toggle_shuffle">Toggle shuffle</string>

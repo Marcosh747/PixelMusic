@@ -28,11 +28,13 @@ dependencyResolutionManagement {
                 includeGroup("com.github.TeamNewPipe")
             }
         }
+        maven("https://central.sonatype.com/repository/maven-snapshots/")
     }
 }
 
-rootProject.name = "PixelPlay"
+rootProject.name = "PixelMusic"
 include(":app")
 include(":shared")
 include(":wear")
 include(":baselineprofile")
+include(":innertube")

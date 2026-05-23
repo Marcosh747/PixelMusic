@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.theveloper.pixelplay.shared"
+    namespace = "com.unshoo.pixelmusic.shared"
     compileSdk = 37
 
     defaultConfig {

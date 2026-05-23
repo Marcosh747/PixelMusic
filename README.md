@@ -126,7 +126,7 @@
 ## 📂 Project Structure
 
 ```text
-app/src/main/java/com/theveloper/pixelplay/
+app/src/main/java/com/unshoo/pixelmusic/
 ├── data/
 │   ├── database/       # Room entities, DAOs, migrations
 │   ├── model/          # Domain models (Song, Album, Artist, etc.)
