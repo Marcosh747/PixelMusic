@@ -22,7 +22,7 @@ internal data class SheetActionHandlers(
     val dragQueueBy: (Float) -> Unit,
     val endQueueDrag: (Float, Float) -> Unit,
     val onSelectedSongForInfoChange: (Song?) -> Unit,
-    val onLaunchSaveQueueOverlay: (List<Song>, String, (String, Set<String>) -> Unit) -> Unit,
+    val onLaunchSaveQueueOverlay: (List<Song>, String, (String, Set<String>, String) -> Unit) -> Unit,
     val onNavigateToAlbum: (Song) -> Unit,
     val onNavigateToArtist: (Song) -> Unit,
     val onNavigateToGenre: (Song) -> Unit
@@ -66,7 +66,7 @@ internal fun rememberSheetActionHandlers(
         { song: Song? -> sheetModalOverlayControllerState.value.updateSelectedSongForInfo(song) }
     }
     val onLaunchSaveQueueOverlay = remember {
-        { songs: List<Song>, defaultName: String, onConfirm: (String, Set<String>) -> Unit ->
+        { songs: List<Song>, defaultName: String, onConfirm: (String, Set<String>, String) -> Unit ->
             sheetModalOverlayControllerState.value.launchSaveQueueOverlay(
                 songs = songs,
                 defaultName = defaultName,

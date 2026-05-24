@@ -34,6 +34,10 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Topic
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,6 +47,10 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.PlaylistViewModel
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -557,9 +565,12 @@ fun PlaylistItem(
 @Composable
 fun CreatePlaylistDialogRedesigned(
     onDismiss: () -> Unit,
-    onCreate: (String) -> Unit,
+    onCreate: (String, String) -> Unit,
     onGenerateClick: () -> Unit
 ) {
+    val playlistViewModel: PlaylistViewModel = hiltViewModel()
+    val isYoutubeLoggedIn by playlistViewModel.youtubeLoggedInFlow.collectAsStateWithLifecycle(initialValue = false)
+    var privacyStatus by remember { mutableStateOf("LOCAL") }
     var playlistName by remember { mutableStateOf("") }
 
     BasicAlertDialog(
@@ -592,13 +603,86 @@ fun CreatePlaylistDialogRedesigned(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 24.dp),
+                        .padding(bottom = 16.dp),
                     singleLine = true,
                     colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     )
                 )
+
+                Text(
+                    text = "Visibility",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isLocalSelected = privacyStatus == "LOCAL"
+                    FilterChip(
+                        selected = isLocalSelected,
+                        onClick = { privacyStatus = "LOCAL" },
+                        label = { Text("Local") },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_phonef),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+
+                    if (isYoutubeLoggedIn) {
+                        listOf(
+                            "PRIVATE" to "Private",
+                            "UNLISTED" to "Unlisted",
+                            "PUBLIC" to "Public"
+                        ).forEach { (status, label) ->
+                            val isSelected = privacyStatus == status
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { privacyStatus = status },
+                                label = { Text(label) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = when(status) {
+                                            "PRIVATE" -> Icons.Rounded.Lock
+                                            "UNLISTED" -> Icons.Rounded.Link
+                                            else -> Icons.Rounded.Public
+                                        },
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Sign in to YT for Cloud sync",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.align(Alignment.CenterVertically).padding(start = 4.dp),
+                            fontFamily = GoogleSansRounded
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -613,7 +697,7 @@ fun CreatePlaylistDialogRedesigned(
                     }
 
                     Button(
-                        onClick = { onCreate(playlistName) },
+                        onClick = { onCreate(playlistName, privacyStatus) },
                         modifier = Modifier.weight(1f),
                         enabled = playlistName.isNotEmpty(),
                         shape = RoundedCornerShape(16.dp),

@@ -33,6 +33,7 @@ import com.unshoo.pixelmusic.data.repository.MusicRepository
 import com.unshoo.pixelmusic.data.model.LyricsSourcePreference
 import com.unshoo.pixelmusic.data.worker.SyncManager
 import com.unshoo.pixelmusic.data.worker.SyncProgress
+import com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
@@ -115,7 +116,9 @@ data class SettingsUiState(
     val forceHighQualityOnMobile: Boolean = false,
     val albumArtQualityMobile: AlbumArtQuality = AlbumArtQuality.LOW,
     val cacheLikedSongsOffline: Boolean = false,
-    val storageLimitMb: Int = 2048
+    val storageLimitMb: Int = 2048,
+    val preloadQueueEnabled: Boolean = true,
+    val preloadQueueSize: Int = 5
 )
 
 data class FailedSongInfo(
@@ -190,6 +193,7 @@ class SettingsViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     private val musicRepository: MusicRepository,
     private val backupManager: BackupManager,
+    private val datastoreRepository: DatastoreRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -482,6 +486,17 @@ class SettingsViewModel @Inject constructor(
     val dataTransferProgress: StateFlow<BackupTransferProgressUpdate?> = _dataTransferProgress.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            datastoreRepository.settings.collect { settings ->
+                _uiState.update {
+                    it.copy(
+                        preloadQueueEnabled = settings.preloadQueueEnabled,
+                        preloadQueueSize = settings.preloadQueueSize
+                    )
+                }
+            }
+        }
+
         // One-time device capability check — result is cached inside HiFiCapabilityChecker
         _uiState.update {
             it.copy(
@@ -1426,4 +1441,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setPreloadQueueEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            datastoreRepository.save(DatastoreRepository.PreferenceKeys.PRELOAD_QUEUE_ENABLED, enabled)
+        }
+    }
+
+    fun setPreloadQueueSize(size: Int) {
+        viewModelScope.launch {
+            datastoreRepository.save(DatastoreRepository.PreferenceKeys.PRELOAD_QUEUE_SIZE, size)
+        }
+    }
 }

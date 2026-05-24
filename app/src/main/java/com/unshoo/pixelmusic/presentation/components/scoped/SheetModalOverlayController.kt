@@ -40,7 +40,7 @@ internal class SheetModalOverlayController(
     fun launchSaveQueueOverlay(
         songs: List<Song>,
         defaultName: String,
-        onConfirm: (String, Set<String>) -> Unit
+        onConfirm: (String, Set<String>, String) -> Unit
     ) {
         if (pendingSaveQueueOverlay != null) return
         scope.launch {

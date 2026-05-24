@@ -147,7 +147,7 @@ class LibraryStateHolder @Inject constructor(
         }.flatMapLatest { (sortOption, filter, subscribedIds) ->
             musicRepository.getPaginatedArtists(sortOption, filter).map { pagingData ->
                 pagingData.filter { artist ->
-                    subscribedIds.contains(artist.id.toString())
+                    subscribedIds.contains(artist.id.toString()) || (artist.channelId != null && subscribedIds.contains(artist.channelId))
                 }
             }
         }
@@ -303,7 +303,7 @@ class LibraryStateHolder @Inject constructor(
                 },
                 userPreferencesRepository.subscribedArtistIdsFlow
             ) { artists, subscribedIds ->
-                artists.filter { artist -> subscribedIds.contains(artist.id.toString()) }
+                artists.filter { artist -> subscribedIds.contains(artist.id.toString()) || (artist.channelId != null && subscribedIds.contains(artist.channelId)) }
             }.conflate().collect { artists ->
                 val sortedArtists = withContext(Dispatchers.Default) {
                     sortArtistsList(artists, _currentArtistSortOption.value).toImmutableList()

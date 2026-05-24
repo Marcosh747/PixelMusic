@@ -1791,7 +1791,7 @@ fun LibraryScreen(
                 Toast.makeText(context, context.getString(R.string.toast_set_gemini_api_key_first), Toast.LENGTH_SHORT).show()
             }
         },
-        onCreate = { name, imageUri, color, icon, songIds, cropScale, cropPanX, cropPanY, shapeType, d1, d2, d3, d4, smartRuleKey ->
+        onCreate = { name, imageUri, color, icon, songIds, cropScale, cropPanX, cropPanY, shapeType, d1, d2, d3, d4, smartRuleKey, privacyStatus ->
             playlistViewModel.createPlaylist(
                 name = name,
                 coverImageUri = imageUri,
@@ -1808,7 +1808,8 @@ fun LibraryScreen(
                 coverShapeDetail2 = d2,
                 coverShapeDetail3 = d3,
                 coverShapeDetail4 = d4,
-                smartRuleKey = smartRuleKey
+                smartRuleKey = smartRuleKey,
+                privacyStatus = privacyStatus
             )
         }
     )

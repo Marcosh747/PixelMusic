@@ -37,6 +37,7 @@ open class DatastoreRepository(private val context: Context) {
         val USE_IMMERSIVE_LYRICS_STATUS_BAR = booleanPreferencesKey("use_immersive_lyrics_status_bar")
         val AUTO_QUEUE_ENABLED = booleanPreferencesKey("auto_queue_enabled")
         val PRELOAD_QUEUE_ENABLED = booleanPreferencesKey("preload_queue_enabled")
+        val PRELOAD_QUEUE_SIZE = intPreferencesKey("preload_queue_size")
         val PERSISTENT_QUEUE = stringPreferencesKey("persistent_queue")
     }
 
@@ -65,6 +66,7 @@ open class DatastoreRepository(private val context: Context) {
         val useImmersiveLyricsStatusBar = it[PreferenceKeys.USE_IMMERSIVE_LYRICS_STATUS_BAR] ?: true
         val autoQueueEnabled = it[PreferenceKeys.AUTO_QUEUE_ENABLED] ?: true
         val preloadQueueEnabled = it[PreferenceKeys.PRELOAD_QUEUE_ENABLED] ?: true
+        val preloadQueueSize = it[PreferenceKeys.PRELOAD_QUEUE_SIZE] ?: 5
         val cookies = cookies.first()
         val dataSyncId = dataSyncId.first()
 
@@ -87,7 +89,8 @@ open class DatastoreRepository(private val context: Context) {
             lyricsMiniPlayerAlignment = lyricsMiniPlayerAlignment,
             useImmersiveLyricsStatusBar = useImmersiveLyricsStatusBar,
             autoQueueEnabled = autoQueueEnabled,
-            preloadQueueEnabled = preloadQueueEnabled
+            preloadQueueEnabled = preloadQueueEnabled,
+            preloadQueueSize = preloadQueueSize
         )
     }
 

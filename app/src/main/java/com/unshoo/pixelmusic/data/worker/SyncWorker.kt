@@ -1893,7 +1893,12 @@ constructor(
                     val localPlaylists = allPlaylists.filter { it.source == "LOCAL" || it.source == "SMART" }
                     
                     localPlaylists.forEach { localPlaylist ->
-                        val playlistSongIds = localPlaylist.songIds.mapNotNull { it.toLongOrNull() }
+                        val playlistSongIds = localPlaylist.songIds.map { id ->
+                            when {
+                                id.startsWith("youtube_") -> toUnifiedYoutubeSongId(id.removePrefix("youtube_"))
+                                else -> id.toLongOrNull()
+                            }
+                        }.filterNotNull()
                         if (playlistSongIds.isNotEmpty()) {
                             val playlistSongs = musicDao.getSongsByIdsListSimple(playlistSongIds)
                             val localYoutubeVideoIds = playlistSongs
@@ -1935,6 +1940,49 @@ constructor(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to perform two-way YouTube playlist sync", e)
+            }
+
+            // 5. Sync YouTube subscribed artists
+            try {
+                if (settings.cookies.raw.isNotBlank()) {
+                    val artistsJson = com.unshoo.pixelmusic.data.remote.youtube.YoutubeRequestHelper.browse("FEmusic_library_corpus_artists", settings)
+                    val remoteArtists = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.extractAccountArtists(artistsJson, settings)
+                    
+                    val localArtistIdsToSubscribe = mutableListOf<String>()
+                    val artistEntitiesToInsert = mutableListOf<ArtistEntity>()
+                    remoteArtists.forEach { remoteArtist ->
+                        val channelId = remoteArtist.id
+                        val artistId = toUnifiedYoutubeArtistId(remoteArtist.name)
+                        
+                        // Insert artist into db
+                        val artistEntity = ArtistEntity(
+                            id = artistId,
+                            name = remoteArtist.name,
+                            trackCount = 0,
+                            imageUrl = remoteArtist.thumbnailUrl,
+                            channelId = channelId
+                        )
+                        artistEntitiesToInsert.add(artistEntity)
+                        
+                        localArtistIdsToSubscribe.add(channelId)
+                        localArtistIdsToSubscribe.add(artistId.toString())
+                    }
+                    
+                    if (artistEntitiesToInsert.isNotEmpty()) {
+                        musicDao.insertArtists(artistEntitiesToInsert)
+                    }
+                    
+                    // Batch subscribe in preferences
+                    if (localArtistIdsToSubscribe.isNotEmpty()) {
+                        val currentSubscribed = userPreferencesRepository.subscribedArtistIdsFlow.first()
+                        val newSet = currentSubscribed + localArtistIdsToSubscribe
+                        newSet.forEach { id ->
+                            userPreferencesRepository.subscribeArtist(id, true)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync YouTube subscribed artists", e)
             }
 
             Log.i(TAG, "Synced ${songsToInsert.size} YouTube songs and ${youtubePlaylists.size} playlists.")

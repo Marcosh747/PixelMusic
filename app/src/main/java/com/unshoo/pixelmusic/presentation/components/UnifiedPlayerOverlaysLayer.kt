@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.map
 internal data class SaveQueueOverlayData(
     val songs: List<Song>,
     val defaultName: String,
-    val onConfirm: (String, Set<String>) -> Unit
+    val onConfirm: (String, Set<String>, String) -> Unit
 )
 
 @Composable
@@ -75,7 +75,7 @@ internal fun UnifiedPlayerQueueLayer(
     onCancelTimer: () -> Unit,
     onCancelCountedPlay: () -> Unit,
     onPlayCounter: (Int) -> Unit,
-    onRequestSaveAsPlaylist: (List<Song>, String, (String, Set<String>) -> Unit) -> Unit,
+    onRequestSaveAsPlaylist: (List<Song>, String, (String, Set<String>, String) -> Unit) -> Unit,
     onQueueDragStart: () -> Unit,
     onQueueDrag: (Float) -> Unit,
     onQueueRelease: (Float, Float) -> Unit
@@ -281,7 +281,7 @@ internal fun UnifiedPlayerQueueAndSongInfoHost(
     onBeginQueueDrag: () -> Unit,
     onDragQueueBy: (Float) -> Unit,
     onEndQueueDrag: (Float, Float) -> Unit,
-    onLaunchSaveQueueOverlay: (List<Song>, String, (String, Set<String>) -> Unit) -> Unit,
+    onLaunchSaveQueueOverlay: (List<Song>, String, (String, Set<String>, String) -> Unit) -> Unit,
     onNavigateToAlbum: (Song) -> Unit,
     onNavigateToArtist: (Song) -> Unit,
     onNavigateToGenre: (Song) -> Unit
@@ -361,7 +361,7 @@ internal fun UnifiedPlayerQueueAndSongInfoHost(
             val onCancelCountedPlay = remember(playerViewModel) { playerViewModel::cancelCountedPlay }
             val onPlayCounter = remember(playerViewModel) { playerViewModel::playCounted }
             val onRequestSavePlaylist = remember(onLaunchSaveQueueOverlay) {
-                { songs: List<Song>, defName: String, onConf: (String, Set<String>) -> Unit ->
+                { songs: List<Song>, defName: String, onConf: (String, Set<String>, String) -> Unit ->
                     onLaunchSaveQueueOverlay(songs, defName, onConf)
                 }
             }
@@ -440,8 +440,8 @@ internal fun UnifiedPlayerSaveQueueLayer(
             songs = overlay.songs,
             defaultName = overlay.defaultName,
             onDismiss = onDismissOverlay,
-            onConfirm = { name, selectedIds ->
-                overlay.onConfirm(name, selectedIds)
+            onConfirm = { name, selectedIds, privacyStatus ->
+                overlay.onConfirm(name, selectedIds, privacyStatus)
                 onDismissOverlay()
             }
         )

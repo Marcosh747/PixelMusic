@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.first
 import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -111,18 +114,52 @@ class SearchStateHolder @Inject constructor(
                         val currentFilter = _selectedSearchFilter.value
                         val localSearchFlow = musicRepository.searchAll(normalizedQuery, currentFilter)
                         
-                        val youtubeSearchFlow = if (currentFilter == SearchFilterType.ALL || currentFilter == SearchFilterType.SONGS) {
-                            youtubeSongRepository.search(normalizedQuery).map { apiResult ->
-                                when (apiResult) {
-                                    is com.unshoo.pixelmusic.data.remote.youtube.ApiResult.Success -> {
-                                        apiResult.data.map { SearchResultItem.SongItem(it.toNativeSong()) }
+                        val youtubeSearchFlow = flow {
+                            val items = mutableListOf<SearchResultItem>()
+
+                            // 1. Fetch songs if applicable
+                            if (currentFilter == SearchFilterType.ALL || currentFilter == SearchFilterType.SONGS) {
+                                try {
+                                    val songResult = youtubeSongRepository.search(normalizedQuery).first { 
+                                        it is com.unshoo.pixelmusic.data.remote.youtube.ApiResult.Success || it is com.unshoo.pixelmusic.data.remote.youtube.ApiResult.Error
                                     }
-                                    else -> emptyList()
+                                    if (songResult is com.unshoo.pixelmusic.data.remote.youtube.ApiResult.Success) {
+                                        items.addAll(songResult.data.map { SearchResultItem.SongItem(it.toNativeSong()) })
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error fetching YouTube search songs")
                                 }
                             }
-                        } else {
-                            flowOf(emptyList())
-                        }
+
+                            // 2. Fetch artists if applicable
+                            if (currentFilter == SearchFilterType.ALL || currentFilter == SearchFilterType.ARTISTS) {
+                                try {
+                                    val searchResult = withContext(Dispatchers.IO) {
+                                        unshoo.ianshulyadav.pixelmusic.innertube.YouTube.search(
+                                            normalizedQuery,
+                                            unshoo.ianshulyadav.pixelmusic.innertube.YouTube.SearchFilter.FILTER_ARTIST
+                                        ).getOrNull()
+                                    }
+                                    val apiArtists = searchResult?.items?.filterIsInstance<unshoo.ianshulyadav.pixelmusic.innertube.models.ArtistItem>() ?: emptyList()
+
+                                    items.addAll(apiArtists.map { apiArtist ->
+                                        SearchResultItem.ArtistItem(
+                                            com.unshoo.pixelmusic.data.model.Artist(
+                                                id = toUnifiedYoutubeArtistId(apiArtist.title),
+                                                name = apiArtist.title,
+                                                songCount = 0,
+                                                imageUrl = apiArtist.thumbnail,
+                                                channelId = apiArtist.id
+                                            )
+                                        )
+                                    })
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error fetching YouTube search artists")
+                                }
+                            }
+
+                            emit(items)
+                        }.flowOn(Dispatchers.IO)
 
                         combine(localSearchFlow, youtubeSearchFlow) { localResults, youtubeResults ->
                             val combined = youtubeResults + localResults
@@ -230,6 +267,10 @@ class SearchStateHolder @Inject constructor(
                 Timber.e(e, "Error clearing search history")
             }
         }
+    }
+
+    private fun toUnifiedYoutubeArtistId(artistName: String): Long {
+        return -(17_000_000_000_000L + kotlin.math.abs(artistName.lowercase().hashCode().toLong()))
     }
 
     fun onCleared() {

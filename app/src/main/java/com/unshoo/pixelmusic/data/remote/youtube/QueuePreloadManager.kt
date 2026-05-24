@@ -32,8 +32,6 @@ import java.io.File
 @OptIn(UnstableApi::class)
 object QueuePreloadManager {
 
-    private const val PRELOAD_AHEAD = 2
-
     private var preloadJob: Job? = null
     private var scope: CoroutineScope? = null
     private var appContext: Context? = null
@@ -101,7 +99,7 @@ object QueuePreloadManager {
             val (currentIndex, totalCount) = playerState
 
             val indicesAhead =
-                (currentIndex + 1)..(currentIndex + PRELOAD_AHEAD).coerceAtMost(totalCount - 1)
+                (currentIndex + 1)..(currentIndex + settings.preloadQueueSize).coerceAtMost(totalCount - 1)
 
             for (i in indicesAhead) {
                 val mediaItem = withContext(Dispatchers.Main) {

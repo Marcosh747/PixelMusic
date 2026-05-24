@@ -888,6 +888,36 @@ fun SettingsCategoryScreen(
                                     onCheckedChange = { settingsViewModel.setShowQueueHistory(it) },
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
+                                SwitchSettingItem(
+                                    title = stringResource(R.string.setcat_preload_queue_enabled_title),
+                                    subtitle = stringResource(R.string.setcat_preload_queue_enabled_desc),
+                                    checked = uiState.preloadQueueEnabled,
+                                    onCheckedChange = { settingsViewModel.setPreloadQueueEnabled(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
+                                AnimatedVisibility(
+                                    visible = uiState.preloadQueueEnabled,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    ThemeSelectorItem(
+                                        label = stringResource(R.string.setcat_preload_queue_size_title),
+                                        description = stringResource(R.string.setcat_preload_queue_size_desc),
+                                        options = mapOf(
+                                            "5" to "5 songs",
+                                            "10" to "10 songs",
+                                            "15" to "15 songs",
+                                            "20" to "20 songs",
+                                            "25" to "25 songs",
+                                            "30" to "30 songs"
+                                        ),
+                                        selectedKey = uiState.preloadQueueSize.toString(),
+                                        onSelectionChanged = { key ->
+                                            settingsViewModel.setPreloadQueueSize(key.toInt())
+                                        },
+                                        leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                    )
+                                }
                             }
 
                             SettingsSubsection(title = stringResource(R.string.setcat_streaming_title)) {

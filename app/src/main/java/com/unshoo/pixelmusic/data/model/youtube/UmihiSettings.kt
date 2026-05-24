@@ -20,6 +20,7 @@ data class UmihiSettings(
     val useImmersiveLyricsStatusBar: Boolean = true,
     val autoQueueEnabled: Boolean = true,
     val preloadQueueEnabled: Boolean = true,
+    val preloadQueueSize: Int = 5,
 ) {
     enum class UpdateChannel {
         Stable, Beta

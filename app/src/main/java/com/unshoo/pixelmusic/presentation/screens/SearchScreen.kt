@@ -890,8 +890,9 @@ fun SearchResultsList(
                                     playerViewModel, onItemSelected
                                 ) {
                                     {
+                                        val targetId = item.artist.channelId ?: item.artist.id.toString()
                                         navController.navigateSafelyReplacing(
-                                            route = Screen.ArtistDetail.createRoute(item.artist.id),
+                                            route = Screen.ArtistDetail.createRoute(targetId),
                                             patternToPop = Screen.ArtistDetail.route
                                         )
                                         onItemSelected()

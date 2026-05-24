@@ -13,6 +13,8 @@ import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.model.SortOption
 import com.unshoo.pixelmusic.data.playlist.M3uManager
 import com.unshoo.pixelmusic.data.preferences.PlaylistPreferencesRepository
+import com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository
+import com.unshoo.pixelmusic.data.remote.youtube.YoutubeRequestHelper
 import com.unshoo.pixelmusic.data.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,6 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -85,11 +89,16 @@ class PlaylistViewModel @Inject constructor(
     private val aiPlaylistGenerator: AiPlaylistGenerator,
     private val m3uManager: M3uManager,
     private val musicDao: MusicDao,
+    private val datastoreRepository: DatastoreRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlaylistUiState())
     val uiState: StateFlow<PlaylistUiState> = _uiState.asStateFlow()
+
+    val youtubeLoggedInFlow = datastoreRepository.cookies
+        .map { it.toRawCookie().isNotEmpty() }
+        .distinctUntilChanged()
 
     private val _playlistCreationEvent = MutableSharedFlow<Boolean>(
         extraBufferCapacity = 1,
@@ -297,6 +306,8 @@ class PlaylistViewModel @Inject constructor(
         coverColor: Int? = null,
         coverIcon: String? = null,
         songIds: List<String> = emptyList(), // Added songIds parameter
+        songs: List<Song> = emptyList(), // Added songs parameter
+        privacyStatus: String = "LOCAL", // Added privacyStatus parameter ("LOCAL", "PRIVATE", "UNLISTED", "PUBLIC")
         cropScale: Float = 1f,
         cropPanX: Float = 0f,
         cropPanY: Float = 0f,
@@ -326,7 +337,9 @@ class PlaylistViewModel @Inject constructor(
             }
 
             val resolvedSmartRule = SmartPlaylistRule.fromStorageKey(smartRuleKey)
-            val resolvedSongIds = if (resolvedSmartRule != null) {
+            val resolvedSongIds = if (songs.isNotEmpty()) {
+                ensureSongsPersisted(songs)
+            } else if (resolvedSmartRule != null) {
                 buildSmartPlaylistSongIds(
                     rule = resolvedSmartRule,
                     limit = SMART_PLAYLIST_MAX_ITEMS
@@ -334,9 +347,36 @@ class PlaylistViewModel @Inject constructor(
             } else {
                 songIds
             }
-            val resolvedSource = when {
+            
+            var finalSource = when {
                 resolvedSmartRule != null && source == "LOCAL" -> "SMART"
                 else -> source
+            }
+            var remotePlaylistId: String? = null
+
+            if (privacyStatus != "LOCAL") {
+                val settings = datastoreRepository.settings.first()
+                if (!settings.cookies.isEmpty()) {
+                    val youtubeVideoIds = if (songs.isNotEmpty()) {
+                        songs.mapNotNull { it.youtubeId ?: if (it.id.startsWith("youtube_")) it.id.removePrefix("youtube_") else null }
+                    } else {
+                        val loadedSongs = musicRepository.getSongsByIds(songIds).first()
+                        loadedSongs.mapNotNull { it.youtubeId ?: if (it.id.startsWith("youtube_")) it.id.removePrefix("youtube_") else null }
+                    }
+                    try {
+                        val jsonResponse = withContext(Dispatchers.IO) {
+                            YoutubeRequestHelper.createPlaylist(name, youtubeVideoIds, settings, privacyStatus)
+                        }
+                        val playlistIdRegex = """\"playlistId\"\s*:\s*\"([^\"]+)\"""".toRegex()
+                        val extractedId = playlistIdRegex.find(jsonResponse)?.groupValues?.get(1)
+                        if (extractedId != null) {
+                            remotePlaylistId = extractedId
+                            finalSource = "YOUTUBE"
+                        }
+                    } catch (e: Exception) {
+                        Log.e("PlaylistViewModel", "Failed to create remote YouTube playlist", e)
+                    }
+                }
             }
 
             playlistPreferencesRepository.createPlaylist(
@@ -352,7 +392,8 @@ class PlaylistViewModel @Inject constructor(
                 coverShapeDetail2 = coverShapeDetail2,
                 coverShapeDetail3 = coverShapeDetail3,
                 coverShapeDetail4 = coverShapeDetail4,
-                source = resolvedSource
+                customId = remotePlaylistId,
+                source = finalSource
             )
             _playlistCreationEvent.emit(true)
         }
@@ -668,6 +709,23 @@ class PlaylistViewModel @Inject constructor(
             if (_uiState.value.currentPlaylistDetails?.id == playlistId) {
                 loadPlaylistDetails(playlistId)
             }
+            val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+            if (playlist != null && playlist.source == "YOUTUBE") {
+                val settings = datastoreRepository.settings.first()
+                if (!settings.cookies.isEmpty()) {
+                    val songs = musicRepository.getSongsByIds(songIdsToAdd).first()
+                    val videoIds = songs.mapNotNull { it.youtubeId ?: if (it.id.startsWith("youtube_")) it.id.removePrefix("youtube_") else null }
+                    if (videoIds.isNotEmpty()) {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                YoutubeRequestHelper.addVideosToPlaylist(playlist.id, videoIds, settings)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("PlaylistViewModel", "Failed to sync added songs to YouTube playlist", e)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -783,10 +841,36 @@ class PlaylistViewModel @Inject constructor(
         viewModelScope.launch {
             val mappedIds = ensureSongsPersisted(listOf(song))
             val mappedSongId = mappedIds.firstOrNull() ?: song.id
+            
+            val currentPlaylists = playlistPreferencesRepository.userPlaylistsFlow.first()
+            val addedToPlaylists = playlistIds.filter { pid ->
+                val pl = currentPlaylists.find { it.id == pid }
+                pl != null && mappedSongId !in pl.songIds
+            }
+
             val removedFromPlaylists =
                 playlistPreferencesRepository.addOrRemoveSongFromPlaylists(mappedSongId, playlistIds)
             if (currentPlaylistId != null && removedFromPlaylists.contains (currentPlaylistId)) {
                 removeSongFromPlaylist(currentPlaylistId, mappedSongId)
+            }
+
+            addedToPlaylists.forEach { playlistId ->
+                val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+                if (playlist != null && playlist.source == "YOUTUBE") {
+                    val settings = datastoreRepository.settings.first()
+                    if (!settings.cookies.isEmpty()) {
+                        val videoId = song.youtubeId ?: if (song.id.startsWith("youtube_")) song.id.removePrefix("youtube_") else null
+                        if (videoId != null) {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    YoutubeRequestHelper.addVideosToPlaylist(playlist.id, listOf(videoId), settings)
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PlaylistViewModel", "Failed to sync added song to YouTube playlist", e)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -796,6 +880,22 @@ class PlaylistViewModel @Inject constructor(
             val mappedIds = ensureSongsPersisted(songs)
             playlistIds.forEach { playlistId ->
                 playlistPreferencesRepository.addSongsToPlaylist(playlistId, mappedIds)
+                val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+                if (playlist != null && playlist.source == "YOUTUBE") {
+                    val settings = datastoreRepository.settings.first()
+                    if (!settings.cookies.isEmpty()) {
+                        val videoIds = songs.mapNotNull { it.youtubeId ?: if (it.id.startsWith("youtube_")) it.id.removePrefix("youtube_") else null }
+                        if (videoIds.isNotEmpty()) {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    YoutubeRequestHelper.addVideosToPlaylist(playlist.id, videoIds, settings)
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PlaylistViewModel", "Failed to sync added songs to YouTube playlist", e)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

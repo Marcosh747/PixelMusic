@@ -318,4 +318,8 @@
     <string name="setcat_music_storage_limit_title">Music Storage Limit</string>
     <string name="setcat_music_storage_limit_desc">Maximum local storage allocated for downloaded YouTube music.</string>
     <string name="genre_local_music">Local Music</string>
+    <string name="setcat_preload_queue_enabled_title">Queue Preloading</string>
+    <string name="setcat_preload_queue_enabled_desc">Proactively resolve stream URLs and cache album art for upcoming songs in the queue.</string>
+    <string name="setcat_preload_queue_size_title">Queue Preload Size</string>
+    <string name="setcat_preload_queue_size_desc">Number of upcoming songs to resolve and cache in the queue.</string>
 </resources>

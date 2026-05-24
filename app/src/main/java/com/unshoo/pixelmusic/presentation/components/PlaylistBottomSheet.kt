@@ -195,9 +195,9 @@ fun PlaylistBottomSheet(
                 if (showCreatePlaylistDialog) {
                     CreatePlaylistDialogRedesigned(
                         onDismiss = { showCreatePlaylistDialog = false },
-                        onCreate = { name ->
+                        onCreate = { name, privacyStatus ->
                             // Pass all selected songs to the new playlist
-                            playlistViewModel.createPlaylist(name, songIds = songs.map { it.id })
+                            playlistViewModel.createPlaylist(name, songs = songs, privacyStatus = privacyStatus)
                             showCreatePlaylistDialog = false
                             onDismiss() // Close sheet after creation + add
                             playerViewModel.sendToast("Playlist created and songs added")

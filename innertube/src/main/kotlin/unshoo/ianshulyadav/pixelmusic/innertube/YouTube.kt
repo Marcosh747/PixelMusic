@@ -1202,11 +1202,12 @@ object YouTube {
             innerTube.unlikePlaylist(WEB_REMIX, playlistId)
     }
 
-    suspend fun subscribeChannel(channelId: String, subscribe: Boolean) = runCatching {
+    suspend fun subscribeChannel(channelId: String, subscribe: Boolean): Result<Unit> = runCatching {
         if (subscribe)
             innerTube.subscribeChannel(WEB_REMIX, channelId)
         else
             innerTube.unsubscribeChannel(WEB_REMIX, channelId)
+        Unit
     }
 
     suspend fun getChannelId(browseId: String): String {

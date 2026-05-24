@@ -29,7 +29,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiUsageEntity::class,
         RelatedSongMap::class
     ],
-    version = 42,
+    version = 43,
     exportSchema = true
 )
 abstract class PixelMusicDatabase : RoomDatabase() {
@@ -651,6 +651,12 @@ abstract class PixelMusicDatabase : RoomDatabase() {
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_related_song_map_song_id` ON `related_song_map` (`song_id`)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_related_song_map_related_song_id` ON `related_song_map` (`related_song_id`)")
+            }
+        }
+
+        val MIGRATION_42_43 = object : Migration(42, 43) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE artists ADD COLUMN channel_id TEXT DEFAULT NULL")
             }
         }
 

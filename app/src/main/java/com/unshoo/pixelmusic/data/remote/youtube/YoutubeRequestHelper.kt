@@ -68,14 +68,14 @@ object YoutubeRequestHelper {
         )
     }
 
-    fun createPlaylist(title: String, videoIds: List<String>, settings: UmihiSettings): String {
+    fun createPlaylist(title: String, videoIds: List<String>, settings: UmihiSettings, privacyStatus: String = "PRIVATE"): String {
         val baseBody = YoutubeAuthHelper.buildContextBody(null, null, settings)
         val body = buildJsonObject {
             baseBody.forEach { (key, value) ->
                 put(key, value)
             }
             put("title", JsonPrimitive(title))
-            put("privacyStatus", JsonPrimitive("PRIVATE"))
+            put("privacyStatus", JsonPrimitive(privacyStatus))
             if (videoIds.isNotEmpty()) {
                 put("videoIds", buildJsonArray {
                     videoIds.forEach { id ->

@@ -55,6 +55,9 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.MicExternalOn
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Piano
@@ -144,6 +147,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.graphics.TransformOrigin
 import com.unshoo.pixelmusic.data.model.StorageFilter
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
+import com.unshoo.pixelmusic.presentation.viewmodel.PlaylistViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.compose.material3.MediumExtendedFloatingActionButton
@@ -196,7 +200,7 @@ fun CreatePlaylistDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
     onGenerateClick: () -> Unit,
-    onCreate: (String, String?, Int?, String?, List<String>, Float, Float, Float, String?, Float?, Float?, Float?, Float?, String?) -> Unit
+    onCreate: (String, String?, Int?, String?, List<String>, Float, Float, Float, String?, Float?, Float?, Float?, Float?, String?, String) -> Unit
 ) {
     val transitionState = remember { MutableTransitionState(false) }
     transitionState.targetState = visible
@@ -282,10 +286,14 @@ fun EditPlaylistDialog(
 private fun CreatePlaylistContent(
     onDismiss: () -> Unit,
     onGenerateClick: () -> Unit,
-    onCreate: (String, String?, Int?, String?, List<String>, Float, Float, Float, String?, Float?, Float?, Float?, Float?, String?) -> Unit,
+    onCreate: (String, String?, Int?, String?, List<String>, Float, Float, Float, String?, Float?, Float?, Float?, Float?, String?, String) -> Unit,
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+
+    val playlistViewModel: PlaylistViewModel = hiltViewModel()
+    val isYoutubeLoggedIn by playlistViewModel.youtubeLoggedInFlow.collectAsStateWithLifecycle(initialValue = false)
+    var privacyStatus by remember { mutableStateOf("LOCAL") }
 
     // Shared State
     var playlistName by remember { mutableStateOf("") }
@@ -466,7 +474,8 @@ private fun CreatePlaylistContent(
                                         panY,
                                         shapeTypeForSave,
                                         d1, d2, d3, d4,
-                                        selectedSmartRule.storageKey
+                                        selectedSmartRule.storageKey,
+                                        privacyStatus
                                     )
                                 }
                             }
@@ -499,7 +508,8 @@ private fun CreatePlaylistContent(
                                 panY,
                                 shapeTypeForSave,
                                 d1, d2, d3, d4,
-                                null
+                                null,
+                                privacyStatus
                             )
                         }
                     },
@@ -608,7 +618,8 @@ private fun CreatePlaylistContent(
                                 panY,
                                 shapeTypeForSave,
                                 d1, d2, d3, d4,
-                                null
+                                null,
+                                privacyStatus
                             )
                         },
                         modifier = Modifier.size(56.dp),
@@ -680,6 +691,9 @@ private fun CreatePlaylistContent(
                      onCreationModeChange = { creationMode = it },
                      selectedSmartRule = selectedSmartRule,
                      onSmartRuleChange = { selectedSmartRule = it },
+                     privacyStatus = privacyStatus,
+                     onPrivacyStatusChange = { privacyStatus = it },
+                     isYoutubeLoggedIn = isYoutubeLoggedIn,
                      onGenerateClick = onGenerateClick
                  )
             } else {
@@ -949,6 +963,9 @@ private fun PlaylistFormContent(
     onCreationModeChange: (PlaylistCreationMode) -> Unit,
     selectedSmartRule: SmartPlaylistRule,
     onSmartRuleChange: (SmartPlaylistRule) -> Unit,
+    privacyStatus: String = "LOCAL",
+    onPrivacyStatusChange: (String) -> Unit = {},
+    isYoutubeLoggedIn: Boolean = false,
     onGenerateClick: (() -> Unit)? = null
 ) {
     if (showCropUi && imageBitmap != null) {
@@ -1170,6 +1187,84 @@ private fun PlaylistFormContent(
                     unfocusedBorderColor = Color.Transparent
                 )
             )
+
+            if (showCreationModeSelector) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Visibility",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    fontFamily = GoogleSansRounded,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 22.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val isLocalSelected = privacyStatus == "LOCAL"
+                    FilterChip(
+                        selected = isLocalSelected,
+                        onClick = { onPrivacyStatusChange("LOCAL") },
+                        label = { Text("Local") },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_phonef),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+
+                    if (isYoutubeLoggedIn) {
+                        listOf(
+                            "PRIVATE" to "Private",
+                            "UNLISTED" to "Unlisted",
+                            "PUBLIC" to "Public"
+                        ).forEach { (status, label) ->
+                            val isSelected = privacyStatus == status
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { onPrivacyStatusChange(status) },
+                                label = { Text(label) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = when(status) {
+                                            "PRIVATE" -> Icons.Rounded.Lock
+                                            "UNLISTED" -> Icons.Rounded.Link
+                                            else -> Icons.Rounded.Public
+                                        },
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Sign in to YT for Cloud sync",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.align(Alignment.CenterVertically).padding(start = 4.dp),
+                            fontFamily = GoogleSansRounded
+                        )
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(8.dp))
 

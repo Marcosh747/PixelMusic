@@ -68,6 +68,12 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarExitDirection
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -243,7 +249,7 @@ fun QueueBottomSheet(
     onRequestSaveAsPlaylist: (
         songs: List<Song>,
         defaultName: String,
-        onConfirm: (String, Set<String>) -> Unit
+        onConfirm: (String, Set<String>, String) -> Unit
     ) -> Unit,
     onQueueDragStart: () -> Unit,
     onQueueDrag: (Float) -> Unit,
@@ -1047,14 +1053,14 @@ fun QueueBottomSheet(
                                     onRequestSaveAsPlaylist(
                                         queue,
                                         defaultName
-                                    ) { name, selectedIds ->
+                                    ) { name, selectedIds, privacyStatus ->
                                         val orderedSelection = queue
                                             .filter { selectedIds.contains(it.id) }
-                                            .map { it.id }
                                         if (orderedSelection.isNotEmpty()) {
                                             playlistViewModel.createPlaylist(
                                                 name = name,
-                                                songIds = orderedSelection,
+                                                songs = orderedSelection,
+                                                privacyStatus = privacyStatus,
                                                 isQueueGenerated = true
                                             )
                                         }
@@ -1488,8 +1494,11 @@ fun SaveQueueAsPlaylistSheet(
     songs: List<Song>,
     defaultName: String,
     onDismiss: () -> Unit,
-    onConfirm: (String, Set<String>) -> Unit,
+    onConfirm: (String, Set<String>, String) -> Unit,
 ) {
+    val playlistViewModel: PlaylistViewModel = hiltViewModel()
+    val isYoutubeLoggedIn by playlistViewModel.youtubeLoggedInFlow.collectAsStateWithLifecycle(initialValue = false)
+    var privacyStatus by remember { mutableStateOf("LOCAL") }
     val focusRequester = remember { FocusRequester() }
     val animatedAlbumCornerRadius = 60.dp
     val albumShape = remember(animatedAlbumCornerRadius) {
@@ -1659,6 +1668,77 @@ fun SaveQueueAsPlaylistSheet(
                                 )
                             )
 
+                            Text(
+                                text = "Visibility",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontFamily = GoogleSansRounded,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp)
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val isLocalSelected = privacyStatus == "LOCAL"
+                                FilterChip(
+                                    selected = isLocalSelected,
+                                    onClick = { privacyStatus = "LOCAL" },
+                                    label = { Text("Local") },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_phonef),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+
+                                if (isYoutubeLoggedIn) {
+                                    listOf(
+                                        "PRIVATE" to "Private",
+                                        "UNLISTED" to "Unlisted",
+                                        "PUBLIC" to "Public"
+                                    ).forEach { (status, label) ->
+                                        val isSelected = privacyStatus == status
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = { privacyStatus = status },
+                                            label = { Text(label) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = when(status) {
+                                                        "PRIVATE" -> Icons.Rounded.Lock
+                                                        "UNLISTED" -> Icons.Rounded.Link
+                                                        else -> Icons.Rounded.Public
+                                                    },
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                                selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = "Sign in to YT for Cloud sync",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                }
+                            }
+
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
@@ -1758,7 +1838,7 @@ fun SaveQueueAsPlaylistSheet(
                                             val chosenIds = selectedSongIds
                                                 .filterValues { it }
                                                 .keys
-                                            onConfirm(finalName, chosenIds)
+                                            onConfirm(finalName, chosenIds, privacyStatus)
                                             onDismiss()
                                         }
                                     },

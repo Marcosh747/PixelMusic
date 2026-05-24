@@ -98,9 +98,25 @@ class ArtistDetailViewModel @Inject constructor(
     fun toggleSubscription() {
         val artistIdStr = savedStateHandle.get<String?>("artistId") ?: return
         viewModelScope.launch {
+            val browseId = uiState.value.browseId ?: if (artistIdStr.toLongOrNull() == null) artistIdStr else null
             val currentSubscribed = userPreferencesRepository.subscribedArtistIdsFlow.first()
             val isCurrentlySubscribed = currentSubscribed.contains(artistIdStr)
-            userPreferencesRepository.subscribeArtist(artistIdStr, !isCurrentlySubscribed)
+            val subscribe = !isCurrentlySubscribed
+
+            if (browseId != null) {
+                try {
+                    withContext(Dispatchers.IO) {
+                        InnerTubeYouTube.subscribeChannel(browseId, subscribe)
+                    }
+                } catch (e: Exception) {
+                    Log.e("ArtistDetailViewModel", "Failed to toggle remote subscription", e)
+                }
+            }
+
+            userPreferencesRepository.subscribeArtist(artistIdStr, subscribe)
+            if (browseId != null && browseId != artistIdStr) {
+                userPreferencesRepository.subscribeArtist(browseId, subscribe)
+            }
         }
     }
 
