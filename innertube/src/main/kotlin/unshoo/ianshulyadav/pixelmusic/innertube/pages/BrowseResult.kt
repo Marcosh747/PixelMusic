@@ -14,11 +14,15 @@ package unshoo.ianshulyadav.pixelmusic.innertube.pages
 import unshoo.ianshulyadav.pixelmusic.innertube.models.YTItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.filterExplicit
 import unshoo.ianshulyadav.pixelmusic.innertube.models.filterVideo
+import unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint
 
 data class BrowseResult(
     val title: String?,
     val thumbnail: String? = null,
     val items: List<Item>,
+    val playEndpoint: WatchEndpoint? = null,
+    val shuffleEndpoint: WatchEndpoint? = null,
+    val radioEndpoint: WatchEndpoint? = null,
 ) {
     data class Item(
         val title: String?,

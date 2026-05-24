@@ -3,6 +3,12 @@ package com.unshoo.pixelmusic.presentation.screens
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafely
 import com.unshoo.pixelmusic.presentation.navigation.navigateSafelyReplacing
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import unshoo.ianshulyadav.pixelmusic.innertube.models.PlaylistItem
+import unshoo.ianshulyadav.pixelmusic.innertube.models.AlbumItem
+import unshoo.ianshulyadav.pixelmusic.innertube.models.ArtistItem
+import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem as YtSongItem
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
+import com.unshoo.pixelmusic.presentation.navigation.Screen
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -351,6 +357,45 @@ fun GenreDetailScreen(
                                 HorizontalDivider(modifier = Modifier.alpha(0.3f))
                             }
                         }
+                        is GenreDetailListItem.OnlineSectionHeader -> {
+                            OnlineSectionHeaderView(item.title)
+                        }
+                        is GenreDetailListItem.OnlinePlaylistsRow -> {
+                            OnlinePlaylistsRowView(
+                                playlists = item.playlists,
+                                navController = navController
+                            )
+                        }
+                        is GenreDetailListItem.OnlineAlbumsRow -> {
+                            OnlineAlbumsRowView(
+                                albums = item.albums,
+                                navController = navController
+                            )
+                        }
+                        is GenreDetailListItem.OnlineArtistsRow -> {
+                            OnlineArtistsRowView(
+                                artists = item.artists,
+                                navController = navController
+                            )
+                        }
+                        is GenreDetailListItem.OnlineSongItem -> {
+                            val nativeSong = remember(item.songItem) { item.songItem.toNativeSong() }
+                            val isCurrent = stablePlayerState.currentSong?.id == nativeSong.id
+                            val isPlaying = stablePlayerState.isPlaying
+                            
+                            Box(modifier = Modifier.padding(horizontal = 8.dp)) {
+                                EnhancedSongListItem(
+                                    song = nativeSong,
+                                    isPlaying = isPlaying,
+                                    isCurrentSong = isCurrent,
+                                    showAlbumArt = true,
+                                    onClick = {
+                                        playerViewModel.showAndPlaySong(nativeSong, uiState.sortedSongs, genreDisplayName)
+                                    },
+                                    onMoreOptionsClick = { song -> showSongOptionsSheet = song }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -413,10 +458,19 @@ fun GenreDetailScreen(
                         showSortSheet = false
                     },
                     onShuffle = {
-                        if (uiState.songs.isNotEmpty()) {
-                            playerViewModel.showAndPlaySong(uiState.sortedSongs.random(), uiState.sortedSongs, genreShuffleLabel)
-                            showSortSheet = false
+                        if (uiState.isOnline) {
+                            val endpoint = uiState.radioEndpoint ?: uiState.shuffleEndpoint ?: uiState.playEndpoint
+                            if (endpoint != null) {
+                                playerViewModel.playRadio(endpoint, genreDisplayName)
+                            } else if (uiState.songs.isNotEmpty()) {
+                                playerViewModel.showAndPlaySong(uiState.sortedSongs.random(), uiState.sortedSongs, genreShuffleLabel)
+                            }
+                        } else {
+                            if (uiState.songs.isNotEmpty()) {
+                                playerViewModel.showAndPlaySong(uiState.sortedSongs.random(), uiState.sortedSongs, genreShuffleLabel)
+                            }
                         }
+                        showSortSheet = false
                     },
                     headerContent = if (isUnknownGenre) {
                         {
@@ -596,7 +650,12 @@ private fun GenreDetailListItem.fastScrollLabel(sortOption: SortOption): String?
             is GenreDetailListItem.AlbumHeader -> extractFastScrollGlyph(album.songs.firstOrNull()?.artist)
             is GenreDetailListItem.SongItem -> extractFastScrollGlyph(song.artist)
             is GenreDetailListItem.Spacer,
-            is GenreDetailListItem.Divider -> null
+            is GenreDetailListItem.Divider,
+            is GenreDetailListItem.OnlineSectionHeader,
+            is GenreDetailListItem.OnlinePlaylistsRow,
+            is GenreDetailListItem.OnlineAlbumsRow,
+            is GenreDetailListItem.OnlineArtistsRow,
+            is GenreDetailListItem.OnlineSongItem -> null
         }
 
         SortOption.ALBUM -> when (this) {
@@ -604,7 +663,12 @@ private fun GenreDetailListItem.fastScrollLabel(sortOption: SortOption): String?
             is GenreDetailListItem.AlbumHeader -> extractFastScrollGlyph(album.name)
             is GenreDetailListItem.SongItem -> extractFastScrollGlyph(song.album)
             is GenreDetailListItem.Spacer,
-            is GenreDetailListItem.Divider -> null
+            is GenreDetailListItem.Divider,
+            is GenreDetailListItem.OnlineSectionHeader,
+            is GenreDetailListItem.OnlinePlaylistsRow,
+            is GenreDetailListItem.OnlineAlbumsRow,
+            is GenreDetailListItem.OnlineArtistsRow,
+            is GenreDetailListItem.OnlineSongItem -> null
         }
 
         SortOption.TITLE -> when (this) {
@@ -612,7 +676,12 @@ private fun GenreDetailListItem.fastScrollLabel(sortOption: SortOption): String?
             is GenreDetailListItem.AlbumHeader -> null
             is GenreDetailListItem.SongItem -> extractFastScrollGlyph(song.title)
             is GenreDetailListItem.Spacer,
-            is GenreDetailListItem.Divider -> null
+            is GenreDetailListItem.Divider,
+            is GenreDetailListItem.OnlineSectionHeader,
+            is GenreDetailListItem.OnlinePlaylistsRow,
+            is GenreDetailListItem.OnlineAlbumsRow,
+            is GenreDetailListItem.OnlineArtistsRow,
+            is GenreDetailListItem.OnlineSongItem -> null
         }
     }
 
@@ -916,6 +985,215 @@ fun GenreSongItemWrapper(
              )
              
              if (isLastInAlbum) Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun OnlineSectionHeaderView(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    )
+}
+
+@Composable
+fun OnlinePlaylistsRowView(
+    playlists: List<PlaylistItem>,
+    navController: NavHostController
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        items(playlists) { playlist ->
+            OnlinePlaylistCard(playlist = playlist, onClick = {
+                navController.navigateSafely(Screen.PlaylistDetail.createRoute(playlist.id))
+            })
+        }
+    }
+}
+
+@Composable
+fun OnlinePlaylistCard(
+    playlist: PlaylistItem,
+    onClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
+        ),
+        shape = AbsoluteSmoothCornerShape(16.dp, 60),
+        modifier = Modifier
+            .width(140.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            SmartImage(
+                model = playlist.thumbnail,
+                contentDescription = playlist.title,
+                modifier = Modifier
+                    .size(116.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = playlist.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = playlist.author?.name ?: playlist.songCountText ?: "YouTube Playlist",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun OnlineAlbumsRowView(
+    albums: List<AlbumItem>,
+    navController: NavHostController
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        items(albums) { album ->
+            OnlineAlbumCard(album = album, onClick = {
+                navController.navigateSafely(Screen.AlbumDetail.createRoute(album.browseId))
+            })
+        }
+    }
+}
+
+@Composable
+fun OnlineAlbumCard(
+    album: AlbumItem,
+    onClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
+        ),
+        shape = AbsoluteSmoothCornerShape(16.dp, 60),
+        modifier = Modifier
+            .width(140.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            SmartImage(
+                model = album.thumbnail,
+                contentDescription = album.title,
+                modifier = Modifier
+                    .size(116.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = album.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            val artistsLabel = album.artists?.joinToString { it.name } ?: album.year?.toString() ?: "YouTube Album"
+            Text(
+                text = artistsLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun OnlineArtistsRowView(
+    artists: List<ArtistItem>,
+    navController: NavHostController
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        items(artists) { artist ->
+            OnlineArtistCard(artist = artist, onClick = {
+                navController.navigateSafely(Screen.ArtistDetail.createRoute(artist.id))
+            })
+        }
+    }
+}
+
+@Composable
+fun OnlineArtistCard(
+    artist: ArtistItem,
+    onClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
+        ),
+        shape = AbsoluteSmoothCornerShape(16.dp, 60),
+        modifier = Modifier
+            .width(140.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            SmartImage(
+                model = artist.thumbnail,
+                contentDescription = artist.title,
+                modifier = Modifier
+                    .size(116.dp)
+                    .clip(CircleShape)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = artist.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = artist.subscriberCountText ?: "YouTube Artist",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

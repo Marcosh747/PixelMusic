@@ -812,17 +812,64 @@ object YouTube {
                 else -> null
             }
         }.orEmpty()
+        val immersiveHeader = response.header?.musicImmersiveHeaderRenderer
+        val headerRenderer = response.header?.musicHeaderRenderer
+        val detailHeader = response.header?.musicDetailHeaderRenderer
+
+        val headerMenuItems = headerRenderer?.buttons?.firstOrNull()?.menuRenderer?.items.orEmpty() +
+            detailHeader?.menu?.menuRenderer?.items.orEmpty()
+
+        val parsedPlayEndpoint = immersiveHeader?.playButton?.buttonRenderer?.navigationEndpoint?.watchEndpoint
+            ?: headerRenderer?.buttons?.firstOrNull()?.menuRenderer?.topLevelButtons?.firstOrNull()?.buttonRenderer?.navigationEndpoint?.watchEndpoint
+            ?: detailHeader?.menu?.menuRenderer?.topLevelButtons?.firstOrNull()?.buttonRenderer?.navigationEndpoint?.watchEndpoint
+
+        val parsedShuffleEndpoint = immersiveHeader?.playButton?.buttonRenderer?.navigationEndpoint?.watchEndpoint
+            ?: headerMenuItems.find {
+                it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
+            }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint
+            ?: headerMenuItems.find {
+                it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
+            }?.menuNavigationItemRenderer?.navigationEndpoint?.watchEndpoint
+
+        val parsedRadioEndpoint = immersiveHeader?.startRadioButton?.buttonRenderer?.navigationEndpoint?.watchEndpoint
+            ?: headerMenuItems.find {
+                it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
+            }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint
+            ?: headerMenuItems.find {
+                it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
+            }?.menuNavigationItemRenderer?.navigationEndpoint?.watchEndpoint
+
+        val coverThumbnail = response.header?.musicImmersiveHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+            ?: response.header?.musicVisualHeaderRenderer?.foregroundThumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+            ?: response.header?.musicDetailHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+            ?: response.header?.musicEditablePlaylistDetailHeaderRenderer?.header?.musicDetailHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+            ?: response.header?.musicEditablePlaylistDetailHeaderRenderer?.header?.musicResponsiveHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
+            ?: response.header?.musicHeaderRenderer?.thumbnail?.thumbnails?.lastOrNull()?.normalizedUrl
+            ?: response.header?.musicHeaderRenderer?.straplineThumbnail?.thumbnails?.lastOrNull()?.normalizedUrl
+            ?: browseItems.asSequence()
+                .filter { section ->
+                    val sTitle = section.title?.lowercase() ?: ""
+                    !sTitle.contains("listen again") &&
+                    !sTitle.contains("recently played") &&
+                    !sTitle.contains("your mix") &&
+                    !sTitle.contains("mixed for you") &&
+                    !sTitle.contains("favorites") &&
+                    !sTitle.contains("from your history")
+                }
+                .flatMap { it.items.asSequence() }
+                .mapNotNull { it.thumbnail }
+                .firstOrNull()
+            ?: browseItems.asSequence().flatMap { it.items.asSequence() }.mapNotNull { it.thumbnail }.firstOrNull()
+
         BrowseResult(
-            title = response.header?.musicHeaderRenderer?.title?.runs?.firstOrNull()?.text,
-            thumbnail = response.header?.musicImmersiveHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
-                ?: response.header?.musicVisualHeaderRenderer?.foregroundThumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
-                ?: response.header?.musicDetailHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
-                ?: response.header?.musicEditablePlaylistDetailHeaderRenderer?.header?.musicDetailHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
-                ?: response.header?.musicEditablePlaylistDetailHeaderRenderer?.header?.musicResponsiveHeaderRenderer?.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl()
-                ?: response.header?.musicHeaderRenderer?.thumbnail?.thumbnails?.lastOrNull()?.normalizedUrl
-                ?: response.header?.musicHeaderRenderer?.straplineThumbnail?.thumbnails?.lastOrNull()?.normalizedUrl
-                ?: browseItems.asSequence().flatMap { it.items.asSequence() }.mapNotNull { it.thumbnail }.firstOrNull(),
+            title = response.header?.musicHeaderRenderer?.title?.runs?.firstOrNull()?.text
+                ?: immersiveHeader?.title?.runs?.firstOrNull()?.text
+                ?: detailHeader?.title?.runs?.firstOrNull()?.text,
+            thumbnail = coverThumbnail,
             items = browseItems,
+            playEndpoint = parsedPlayEndpoint,
+            shuffleEndpoint = parsedShuffleEndpoint,
+            radioEndpoint = parsedRadioEndpoint,
         )
     }
 

@@ -16,7 +16,7 @@ import kotlinx.coroutines.runBlocking
 
 val Context.youtubeDataStore: DataStore<Preferences> by preferencesDataStore(name = Constants.Datastore.NAME)
 
-class DatastoreRepository(private val context: Context) {
+open class DatastoreRepository(private val context: Context) {
     object PreferenceKeys {
         val COOKIES = stringPreferencesKey(Constants.Datastore.COOKIES_KEY)
         val DATA_SYNC_ID = stringPreferencesKey(Constants.Datastore.DATA_SYNC_ID)
@@ -46,7 +46,7 @@ class DatastoreRepository(private val context: Context) {
         }
     }
 
-    val settings = context.youtubeDataStore.data.map {
+    open val settings = context.youtubeDataStore.data.map {
         val updateChannel = it[PreferenceKeys.UPDATE_CHANNEL]?.let { value -> UmihiSettings.UpdateChannel.valueOf(value) }
             ?: UmihiSettings.UpdateChannel.Stable
         val showPodcastPlaylist = it[PreferenceKeys.SHOW_PODCAST_PLAYLIST] ?: true
@@ -91,7 +91,7 @@ class DatastoreRepository(private val context: Context) {
         )
     }
 
-    fun getSettings(): UmihiSettings {
+    open fun getSettings(): UmihiSettings {
         return runBlocking {
             settings.first()
         }

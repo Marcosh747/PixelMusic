@@ -111,6 +111,15 @@ object AutoQueueManager {
         fetchJob?.cancel()
     }
 
+    fun seed(endpoint: WatchEndpoint, continuation: String?, videoId: String) {
+        lastFetchedVideoId = videoId
+        continuationToken = continuation
+        currentWatchEndpoint = endpoint
+        addedVideoIds.clear()
+        addedVideoIds.add(videoId)
+    }
+
+
     private fun checkAndRefillQueue() {
         forceRefill(forceRefresh = false)
     }

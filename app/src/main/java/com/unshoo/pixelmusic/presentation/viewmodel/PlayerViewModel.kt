@@ -12,6 +12,8 @@ import androidx.work.workDataOf
 import androidx.work.ExistingWorkPolicy
 import com.unshoo.pixelmusic.data.remote.youtube.SongDownloadWorker
 import com.unshoo.pixelmusic.data.remote.youtube.PlaylistDownloadWorker
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
+import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
 import kotlinx.coroutines.flow.first
 import android.media.MediaMetadataRetriever
 import kotlin.math.absoluteValue
@@ -2251,6 +2253,36 @@ class PlayerViewModel @Inject constructor(
         }
         showAndPlaySong(song, contextSongs, "Library")
     }
+
+    fun playRadio(endpoint: unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint, title: String) {
+        viewModelScope.launch {
+            _playerUiState.update { it.copy(isLoadingInitialSongs = true) }
+            val result = withContext(Dispatchers.IO) {
+                unshoo.ianshulyadav.pixelmusic.innertube.YouTube.next(endpoint)
+            }
+            result.onSuccess { nextResult ->
+                val songs = nextResult.items.map { it.toNativeSong() }
+                if (songs.isNotEmpty()) {
+                    com.unshoo.pixelmusic.data.remote.youtube.AutoQueueManager.reset()
+                    
+                    val startSong = songs.first()
+                    playSongs(songs, startSong, title)
+                    
+                    val videoId = startSong.youtubeId ?: startSong.id.substringAfter("youtube_")
+                    com.unshoo.pixelmusic.data.remote.youtube.AutoQueueManager.seed(
+                        endpoint = nextResult.endpoint ?: endpoint,
+                        continuation = nextResult.continuation,
+                        videoId = videoId
+                    )
+                }
+                _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
+            }.onFailure { e ->
+                Timber.e(e, "Failed to start radio mix")
+                _playerUiState.update { it.copy(isLoadingInitialSongs = false) }
+            }
+        }
+    }
+
 
     private fun List<Song>.matchesSongOrder(contextSongs: List<Song>): Boolean {
         if (size != contextSongs.size) return false

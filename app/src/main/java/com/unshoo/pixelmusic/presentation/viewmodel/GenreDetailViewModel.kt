@@ -11,10 +11,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import javax.inject.Inject
+import unshoo.ianshulyadav.pixelmusic.innertube.models.PlaylistItem
+import unshoo.ianshulyadav.pixelmusic.innertube.models.AlbumItem
+import unshoo.ianshulyadav.pixelmusic.innertube.models.ArtistItem
+import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem as YtSongItem
+import unshoo.ianshulyadav.pixelmusic.innertube.pages.BrowseResult
+import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
+import unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
 
 // --- Model Types for Sectioned Display ---
 
@@ -83,6 +92,33 @@ sealed class GenreDetailListItem {
     data class Divider(
         override val key: String
     ) : GenreDetailListItem()
+
+    // --- Online Specific List Item Classes ---
+    data class OnlineSectionHeader(
+        override val key: String,
+        val title: String
+    ) : GenreDetailListItem()
+
+    data class OnlinePlaylistsRow(
+        override val key: String,
+        val playlists: List<PlaylistItem>
+    ) : GenreDetailListItem()
+
+    data class OnlineAlbumsRow(
+        override val key: String,
+        val albums: List<AlbumItem>
+    ) : GenreDetailListItem()
+
+    data class OnlineArtistsRow(
+        override val key: String,
+        val artists: List<ArtistItem>
+    ) : GenreDetailListItem()
+
+    data class OnlineSongItem(
+        override val key: String,
+        val songItem: YtSongItem,
+        val index: Int
+    ) : GenreDetailListItem()
 }
 
 data class GenreDetailUiState(
@@ -94,7 +130,14 @@ data class GenreDetailUiState(
     val sortOption: SortOption = SortOption.ARTIST,
     val isLoadingGenreName: Boolean = false,
     val isLoadingSongs: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isOnline: Boolean = false,
+    val onlineTitle: String? = null,
+    val onlineThumbnail: String? = null,
+    val onlineSections: List<BrowseResult.Item> = emptyList(),
+    val playEndpoint: WatchEndpoint? = null,
+    val shuffleEndpoint: WatchEndpoint? = null,
+    val radioEndpoint: WatchEndpoint? = null
 )
 
 @HiltViewModel
@@ -130,48 +173,104 @@ class GenreDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoadingGenreName = true, isLoadingSongs = true, error = null)
 
             try {
-                // Step 1: Fast load of the Genre object to stabilize the UI theme as early as possible.
-                // This prevents a major recomposition (theme switch) mid-animation.
-                val initialGenre = withContext(Dispatchers.Default) {
-                    val genres = musicRepository.getGenres().first()
-                    genres.find { it.id.equals(genreId, ignoreCase = true) }
-                }
-                
-                if (initialGenre != null) {
-                    _uiState.value = _uiState.value.copy(genre = initialGenre, isLoadingGenreName = false)
-                }
+                val parts = genreId.split("?p=")
+                val actualBrowseId = parts[0]
+                val params = if (parts.size > 1) parts[1] else null
 
-                // Step 2: Heavy data processing for songs and sections
-                val result = withContext(Dispatchers.Default) {
-                    val genres = musicRepository.getGenres().first()
-                    val genre = initialGenre ?: genres.find { it.id.equals(genreId, ignoreCase = true) }
-                        ?: Genre(
+                if (actualBrowseId.startsWith("FEmusic_")) {
+                    // Online Category Loading Mode (ArchiveTune dynamic browse)
+                    val browseResult = withContext(Dispatchers.IO) {
+                        YouTube.browse(actualBrowseId, params).getOrNull()
+                    }
+
+                    if (browseResult != null) {
+                        val initialDisplayName = actualBrowseId
+                            .replace("FEmusic_moods_and_genres_category_", "")
+                            .replace("_", " ")
+                            .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
+                        val genreModel = Genre(
                             id = genreId,
-                            name = genreId.replace("_", " ").replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }, 
+                            name = browseResult.title ?: initialDisplayName,
                             lightColorHex = "#9E9E9E", onLightColorHex = "#000000",
                             darkColorHex = "#616161", onDarkColorHex = "#FFFFFF"
                         )
 
-                    val songs = musicRepository.getMusicByGenre(genre.name).first()
-                    val artists = musicRepository.getArtists().first()
-                    artistMap = artists.associate { it.name.trim().lowercase() to it.imageUrl }
+                        // Compile all songs inside sections to support shuffle / play flow
+                        val onlineSongs = browseResult.items.flatMap { it.items }
+                            .filterIsInstance<YtSongItem>()
+                            .map { it.toNativeSong() }
 
-                    val sections = buildDisplaySections(songs, SortOption.ARTIST)
-                    val flattened = flattenSections(sections, artistMap)
-                    val sorted = songs.sortedBy { it.artist ?: "Unknown Artist" }
+                        val flattened = flattenOnlineSections(browseResult.items)
+
+                        _uiState.value = _uiState.value.copy(
+                            genre = genreModel,
+                            isOnline = true,
+                            onlineTitle = browseResult.title ?: initialDisplayName,
+                            onlineThumbnail = browseResult.thumbnail,
+                            onlineSections = browseResult.items,
+                            playEndpoint = browseResult.playEndpoint,
+                            shuffleEndpoint = browseResult.shuffleEndpoint,
+                            radioEndpoint = browseResult.radioEndpoint,
+                            flattenedItems = flattened,
+                            songs = onlineSongs,
+                            sortedSongs = onlineSongs,
+                            isLoadingGenreName = false,
+                            isLoadingSongs = false
+                        )
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            error = "Failed to load online genre categories",
+                            isLoadingGenreName = false,
+                            isLoadingSongs = false
+                        )
+                    }
+                } else {
+                    // Local / Offline Mode fallback (if any)
+                    // Step 1: Fast load of the Genre object to stabilize the UI theme as early as possible.
+                    // This prevents a major recomposition (theme switch) mid-animation.
+                    val initialGenre = withContext(Dispatchers.Default) {
+                        val genres = musicRepository.getGenres().first()
+                        genres.find { it.id.equals(genreId, ignoreCase = true) }
+                    }
                     
-                    ProcessingResult(genre, songs, sorted, sections, flattened)
-                }
+                    if (initialGenre != null) {
+                        _uiState.value = _uiState.value.copy(genre = initialGenre, isLoadingGenreName = false)
+                    }
 
-                _uiState.value = _uiState.value.copy(
-                    genre = result.genre,
-                    songs = result.songs,
-                    sortedSongs = result.sortedSongs,
-                    displaySections = result.sections,
-                    flattenedItems = result.flattened,
-                    isLoadingGenreName = false,
-                    isLoadingSongs = false
-                )
+                    // Step 2: Heavy data processing for songs and sections
+                    val result = withContext(Dispatchers.Default) {
+                        val genres = musicRepository.getGenres().first()
+                        val genre = initialGenre ?: genres.find { it.id.equals(genreId, ignoreCase = true) }
+                            ?: Genre(
+                                id = genreId,
+                                name = genreId.replace("_", " ").replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }, 
+                                lightColorHex = "#9E9E9E", onLightColorHex = "#000000",
+                                darkColorHex = "#616161", onDarkColorHex = "#FFFFFF"
+                            )
+
+                        val songs = musicRepository.getMusicByGenre(genre.name).first()
+                        val artists = musicRepository.getArtists().first()
+                        artistMap = artists.associate { it.name.trim().lowercase() to it.imageUrl }
+
+                        val sections = buildDisplaySections(songs, SortOption.ARTIST)
+                        val flattened = flattenSections(sections, artistMap)
+                        val sorted = songs.sortedBy { it.artist ?: "Unknown Artist" }
+                        
+                        ProcessingResult(genre, songs, sorted, sections, flattened)
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        genre = result.genre,
+                        songs = result.songs,
+                        sortedSongs = result.sortedSongs,
+                        displaySections = result.sections,
+                        flattenedItems = result.flattened,
+                        isOnline = false,
+                        isLoadingGenreName = false,
+                        isLoadingSongs = false
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = "Failed to load genre details: ${e.message}",
@@ -180,6 +279,63 @@ class GenreDetailViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun flattenOnlineSections(sections: List<BrowseResult.Item>): List<GenreDetailListItem> {
+        val items = mutableListOf<GenreDetailListItem>()
+        sections.forEachIndexed { sectionIndex, section ->
+            val sectionTitle = section.title ?: ""
+            val sectionItems = section.items
+            if (sectionItems.isEmpty()) return@forEachIndexed
+
+            // Renders the section header
+            items.add(GenreDetailListItem.OnlineSectionHeader(
+                key = "online_section_header_${sectionIndex}_${sectionTitle.hashCode()}",
+                title = sectionTitle
+            ))
+
+            val songs = sectionItems.filterIsInstance<YtSongItem>()
+            val albums = sectionItems.filterIsInstance<AlbumItem>()
+            val playlists = sectionItems.filterIsInstance<PlaylistItem>()
+            val artists = sectionItems.filterIsInstance<ArtistItem>()
+
+            if (songs.isNotEmpty()) {
+                songs.forEachIndexed { songIndex, songItem ->
+                    items.add(GenreDetailListItem.OnlineSongItem(
+                        key = "online_song_${sectionIndex}_${songItem.id}_$songIndex",
+                        songItem = songItem,
+                        index = songIndex
+                    ))
+                }
+            }
+
+            if (playlists.isNotEmpty()) {
+                items.add(GenreDetailListItem.OnlinePlaylistsRow(
+                    key = "online_playlists_${sectionIndex}_${playlists.hashCode()}",
+                    playlists = playlists
+                ))
+            }
+
+            if (albums.isNotEmpty()) {
+                items.add(GenreDetailListItem.OnlineAlbumsRow(
+                    key = "online_albums_${sectionIndex}_${albums.hashCode()}",
+                    albums = albums
+                ))
+            }
+
+            if (artists.isNotEmpty()) {
+                items.add(GenreDetailListItem.OnlineArtistsRow(
+                    key = "online_artists_${sectionIndex}_${artists.hashCode()}",
+                    artists = artists
+                ))
+            }
+
+            items.add(GenreDetailListItem.Spacer(
+                key = "online_section_spacer_$sectionIndex",
+                heightDp = 24
+            ))
+        }
+        return items
     }
 
     /**
