@@ -385,4 +385,9 @@ interface MusicRepository {
      * in progress under the same unique work name.
      */
     fun requestTelegramUnifiedSync()
+
+    /**
+     * Inserts/caches a list of YouTube songs in the local database.
+     */
+    suspend fun insertYoutubeSongs(songs: List<Song>)
 }

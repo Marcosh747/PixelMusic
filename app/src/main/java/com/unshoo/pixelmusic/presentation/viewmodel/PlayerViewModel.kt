@@ -454,12 +454,28 @@ class PlayerViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val currentSongArtists: StateFlow<List<Artist>> = stablePlayerState
-        .map { it.currentSong?.id }
-        .distinctUntilChanged()
-        .flatMapLatest { songId ->
-            val idLong = songId?.toLongOrNull()
-            if (idLong == null) flowOf(emptyList())
-            else musicRepository.getArtistsForSong(idLong)
+        .map { it.currentSong }
+        .distinctUntilChanged { old, new -> old?.id == new?.id }
+        .flatMapLatest { currentSong ->
+            if (currentSong == null) {
+                flowOf(emptyList())
+            } else {
+                val idLong = currentSong.id.toLongOrNull()
+                if (idLong == null) {
+                    flowOf(currentSong.artists.map { ref ->
+                        Artist(
+                            id = ref.id,
+                            name = ref.name,
+                            songCount = 0,
+                            imageUrl = null,
+                            customImageUri = null,
+                            channelId = ref.channelId
+                        )
+                    })
+                } else {
+                    musicRepository.getArtistsForSong(idLong)
+                }
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -700,9 +716,9 @@ class PlayerViewModel @Inject constructor(
     private var pendingDeleteSong: Song? = null
     private var pendingDeleteCallback: ((Boolean) -> Unit)? = null
 
-    private val _albumNavigationRequests = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    private val _albumNavigationRequests = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val albumNavigationRequests = _albumNavigationRequests.asSharedFlow()
-    private val _artistNavigationRequests = MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    private val _artistNavigationRequests = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val artistNavigationRequests = _artistNavigationRequests.asSharedFlow()
     private val _searchNavDoubleTapEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val searchNavDoubleTapEvents = _searchNavDoubleTapEvents.asSharedFlow()
@@ -2413,14 +2429,18 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun triggerAlbumNavigationFromPlayer(albumId: Long) {
-        if (albumId == -1L) {
-            Log.d("AlbumDebug", "triggerAlbumNavigationFromPlayer ignored invalid albumId=$albumId")
+        triggerAlbumNavigationFromPlayer(albumId.toString())
+    }
+
+    fun triggerAlbumNavigationFromPlayer(albumIdStr: String) {
+        if (albumIdStr.isBlank() || albumIdStr == "-1" || albumIdStr == "0") {
+            Log.d("AlbumDebug", "triggerAlbumNavigationFromPlayer ignored invalid albumId=$albumIdStr")
             return
         }
 
         val existingJob = albumNavigationJob
         if (existingJob != null && existingJob.isActive) {
-            Log.d("AlbumDebug", "triggerAlbumNavigationFromPlayer ignored; navigation already in progress for albumId=$albumId")
+            Log.d("AlbumDebug", "triggerAlbumNavigationFromPlayer ignored; navigation already in progress for albumId=$albumIdStr")
             return
         }
 
@@ -2429,7 +2449,7 @@ class PlayerViewModel @Inject constructor(
             val currentSong = playbackStateHolder.stablePlayerState.value.currentSong
             Log.d(
                 "AlbumDebug",
-                "triggerAlbumNavigationFromPlayer: albumId=$albumId, songId=${currentSong?.id}, title=${currentSong?.title}"
+                "triggerAlbumNavigationFromPlayer: albumId=$albumIdStr, songId=${currentSong?.id}, title=${currentSong?.title}"
             )
             collapsePlayerSheet()
 
@@ -2438,35 +2458,39 @@ class PlayerViewModel @Inject constructor(
                 awaitPlayerCollapse()
             }
 
-            _albumNavigationRequests.emit(albumId)
+            _albumNavigationRequests.emit(albumIdStr)
         }
     }
 
     fun triggerArtistNavigationFromPlayer(artistId: Long) {
-        if (artistId == 0L) {
-            Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer ignored invalid artistId=$artistId")
+        triggerArtistNavigationFromPlayer(artistId.toString())
+    }
+
+    fun triggerArtistNavigationFromPlayer(artistIdStr: String) {
+        if (artistIdStr.isBlank() || artistIdStr == "0" || artistIdStr == "-1") {
+            Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer ignored invalid artistId=$artistIdStr")
             return
         }
 
         val existingJob = artistNavigationJob
         if (existingJob != null && existingJob.isActive) {
-            Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer ignored; navigation already in progress for artistId=$artistId")
+            Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer ignored; navigation already in progress for artistId=$artistIdStr")
             return
         }
 
         artistNavigationJob?.cancel()
         artistNavigationJob = viewModelScope.launch {
-            var resolvedId = artistId
+            var resolvedId = artistIdStr
             val currentSong = playbackStateHolder.stablePlayerState.value.currentSong
             
-            if (resolvedId == -1L && currentSong != null) {
+            if (resolvedId == "-1" && currentSong != null) {
                 val idFromName = musicRepository.getArtistIdByName(currentSong.artist)
                 if (idFromName != null) {
-                    resolvedId = idFromName
+                    resolvedId = idFromName.toString()
                 }
             }
 
-            if (resolvedId == 0L || resolvedId == -1L) {
+            if (resolvedId == "0" || resolvedId == "-1") {
                 Log.d("ArtistDebug", "triggerArtistNavigationFromPlayer: could not resolve artistId for name=${currentSong?.artist}")
                 return@launch
             }
@@ -2482,7 +2506,7 @@ class PlayerViewModel @Inject constructor(
                 awaitPlayerCollapse()
             }
 
-            _artistNavigationRequests.emit(artistId)
+            _artistNavigationRequests.emit(resolvedId)
         }
     }
 

@@ -97,7 +97,8 @@ data class SongEntity(
     @ColumnInfo(name = "telegram_chat_id") val telegramChatId: Long? = null,
     @ColumnInfo(name = "telegram_file_id") val telegramFileId: Int? = null,
     @ColumnInfo(name = "artists_json") val artistsJson: String? = null,
-    @ColumnInfo(name = "source_type", defaultValue = "0") val sourceType: Int = SourceType.LOCAL
+    @ColumnInfo(name = "source_type", defaultValue = "0") val sourceType: Int = SourceType.LOCAL,
+    @ColumnInfo(name = "album_browse_id") val albumBrowseId: String? = null
 )
 
 private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
@@ -152,7 +153,8 @@ private fun SongEntity.toSongInternal(artists: List<ArtistRef>): Song {
         sampleRate = this.sampleRate,
         youtubeId = if (this.contentUriString.startsWith("youtube://")) {
             this.contentUriString.removePrefix("youtube://")
-        } else null
+        } else null,
+        albumBrowseId = this.albumBrowseId
     )
 }
 
@@ -173,7 +175,8 @@ private fun parseArtistsJson(json: String?): List<ArtistRef> {
             ArtistRef(
                 id = obj.getLong("id"),
                 name = obj.getString("name"),
-                isPrimary = obj.optBoolean("primary", false)
+                isPrimary = obj.optBoolean("primary", false),
+                channelId = if (obj.has("channelId") && !obj.isNull("channelId")) obj.optString("channelId", null) else null
             )
         }
     } catch (_: Exception) {
@@ -191,6 +194,9 @@ fun serializeArtistRefs(artists: List<ArtistRef>): String {
             put("id", ref.id)
             put("name", ref.name)
             put("primary", ref.isPrimary)
+            if (ref.channelId != null) {
+                put("channelId", ref.channelId)
+            }
         })
     }
     return arr.toString()
@@ -206,7 +212,8 @@ fun SongEntity.toSongWithArtistRefs(artists: List<ArtistEntity>, crossRefs: List
         ArtistRef(
             id = artist.id,
             name = artist.name.normalizeMetadataTextOrEmpty(),
-            isPrimary = crossRef?.isPrimary ?: false
+            isPrimary = crossRef?.isPrimary ?: false,
+            channelId = artist.channelId
         )
     }.sortedByDescending { it.isPrimary }
 
@@ -244,7 +251,8 @@ fun Song.toEntity(filePathFromMediaStore: String, parentDirFromMediaStore: Strin
         mimeType = this.mimeType,
         bitrate = this.bitrate,
         sampleRate = this.sampleRate,
-        sourceType = SourceType.fromContentUri(this.contentUriString)
+        sourceType = SourceType.fromContentUri(this.contentUriString),
+        albumBrowseId = this.albumBrowseId
     )
 }
 
@@ -283,6 +291,7 @@ fun Song.toEntityWithoutPaths(): SongEntity {
         mimeType = this.mimeType,
         bitrate = this.bitrate,
         sampleRate = this.sampleRate,
-        sourceType = SourceType.fromContentUri(this.contentUriString)
+        sourceType = SourceType.fromContentUri(this.contentUriString),
+        albumBrowseId = this.albumBrowseId
     )
 }

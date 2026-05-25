@@ -65,5 +65,6 @@ data class Artist(
 data class ArtistRef(
     val id: Long,
     val name: String,
-    val isPrimary: Boolean = false
+    val isPrimary: Boolean = false,
+    val channelId: String? = null
 ) : Parcelable

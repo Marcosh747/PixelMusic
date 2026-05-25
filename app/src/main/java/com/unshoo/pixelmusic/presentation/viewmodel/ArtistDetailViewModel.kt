@@ -147,8 +147,12 @@ class ArtistDetailViewModel @Inject constructor(
                 } else {
                     val localArtist = musicRepository.getArtistById(numericId).first()
                     if (localArtist != null) {
+                        val primaryArtistName = localArtist.name.split(
+                            ", ", " & ", " feat.", " feat ", " Feat.", " Feat ", " FT.", " FT ", " ft.", " ft "
+                        ).firstOrNull()?.trim() ?: localArtist.name
+
                         val searchResult = withContext(Dispatchers.IO) {
-                            InnerTubeYouTube.search(localArtist.name, InnerTubeYouTube.SearchFilter.FILTER_ARTIST).getOrNull()
+                            InnerTubeYouTube.search(primaryArtistName, InnerTubeYouTube.SearchFilter.FILTER_ARTIST).getOrNull()
                         }
                         val artistItem = searchResult?.items?.find { it is ArtistItem } as? ArtistItem
                         browseId = artistItem?.id

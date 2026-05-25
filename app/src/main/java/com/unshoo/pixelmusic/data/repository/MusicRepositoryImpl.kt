@@ -1564,4 +1564,27 @@ class MusicRepositoryImpl @Inject constructor(
             com.unshoo.pixelmusic.data.worker.SyncWorker.incrementalSyncWork()
         )
     }
+
+    override suspend fun insertYoutubeSongs(songs: List<Song>): Unit = withContext(Dispatchers.IO) {
+        songs.forEach { song ->
+            val youtubeId = song.youtubeId 
+                ?: if (song.id.startsWith("youtube_")) song.id.substringAfter("youtube_")
+                   else if (song.contentUriString.startsWith("youtube://")) song.contentUriString.substringAfter("youtube://")
+                   else null
+            if (youtubeId != null) {
+                val songId = toUnifiedYoutubeSongId(youtubeId)
+                val exists = musicDao.getSongsByIdsListSimple(listOf(songId)).isNotEmpty()
+                if (!exists) {
+                    insertYoutubeSongSkeleton(
+                        youtubeId = youtubeId,
+                        title = song.title,
+                        artist = song.artist,
+                        thumbnailUrl = song.albumArtUriString,
+                        duration = song.duration,
+                        genre = song.genre ?: "YouTube Music"
+                    )
+                }
+            }
+        }
+    }
 }

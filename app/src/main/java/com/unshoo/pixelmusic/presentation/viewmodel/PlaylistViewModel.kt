@@ -16,6 +16,8 @@ import com.unshoo.pixelmusic.data.preferences.PlaylistPreferencesRepository
 import com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository
 import com.unshoo.pixelmusic.data.remote.youtube.YoutubeRequestHelper
 import com.unshoo.pixelmusic.data.repository.MusicRepository
+import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -272,6 +274,54 @@ class PlaylistViewModel @Inject constructor(
                                 isLoading = false,
                                 playlistNotFound = false
                             )
+                        }
+                    } else if (playlistId.startsWith("PL") || playlistId.startsWith("VL") || playlistId.toLongOrNull() == null) {
+                        val ytPlaylistResult = withContext(Dispatchers.IO) {
+                            YouTube.playlist(playlistId)
+                        }
+                        if (ytPlaylistResult.isSuccess) {
+                            val ytPlaylistPage = ytPlaylistResult.getOrThrow()
+                            val ytPlaylist = ytPlaylistPage.playlist
+                            
+                            val allYtSongs = ytPlaylistPage.songs.toMutableList()
+                            var continuation = ytPlaylistPage.songsContinuation ?: ytPlaylistPage.continuation
+                            var pages = 0
+                            while (continuation != null && pages < 10) {
+                                val contResult = withContext(Dispatchers.IO) {
+                                    YouTube.playlistContinuation(continuation!!)
+                                }
+                                if (contResult.isSuccess) {
+                                    val contPage = contResult.getOrThrow()
+                                    allYtSongs.addAll(contPage.songs)
+                                    continuation = contPage.continuation
+                                    pages++
+                                } else {
+                                    break
+                                }
+                            }
+                            val nativeSongs = allYtSongs.map { it.toNativeSong() }
+                            
+                            // Cache online playlist songs in Room DB
+                            musicRepository.insertYoutubeSongs(nativeSongs)
+
+                            val playlistModel = Playlist(
+                                id = playlistId,
+                                name = ytPlaylist.title,
+                                songIds = nativeSongs.map { it.id },
+                                coverImageUri = ytPlaylist.thumbnail,
+                                source = "YOUTUBE"
+                            )
+                            _uiState.update {
+                                it.copy(
+                                    currentPlaylistDetails = playlistModel,
+                                    currentPlaylistSongs = nativeSongs,
+                                    playlistSongsOrderMode = PlaylistSongsOrderMode.Manual,
+                                    isLoading = false,
+                                    playlistNotFound = false
+                                )
+                            }
+                        } else {
+                            _uiState.update { it.copy(isLoading = false, playlistNotFound = true) }
                         }
                     } else {
                         Log.w("PlaylistVM", "Playlist with id $playlistId not found.")

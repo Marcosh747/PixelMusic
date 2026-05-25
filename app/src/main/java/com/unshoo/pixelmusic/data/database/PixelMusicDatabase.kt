@@ -29,7 +29,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AiUsageEntity::class,
         RelatedSongMap::class
     ],
-    version = 43,
+    version = 44,
     exportSchema = true
 )
 abstract class PixelMusicDatabase : RoomDatabase() {
@@ -657,6 +657,12 @@ abstract class PixelMusicDatabase : RoomDatabase() {
         val MIGRATION_42_43 = object : Migration(42, 43) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE artists ADD COLUMN channel_id TEXT DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN album_browse_id TEXT DEFAULT NULL")
             }
         }
 

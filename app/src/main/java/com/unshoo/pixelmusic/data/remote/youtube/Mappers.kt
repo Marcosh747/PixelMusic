@@ -43,7 +43,8 @@ fun SongItem.toNativeSong(): Song {
         ArtistRef(
             id = artist.name.hashCode().toLong(),
             name = artist.name,
-            isPrimary = artist == artists.firstOrNull()
+            isPrimary = artist == artists.firstOrNull(),
+            channelId = artist.id
         )
     }
     return Song(
@@ -77,7 +78,8 @@ fun SongItem.toNativeSong(): Song {
         qqMusicMid = null,
         navidromeId = null,
         jellyfinId = null,
-        youtubeId = id
+        youtubeId = id,
+        albumBrowseId = album?.id
     )
 }
 

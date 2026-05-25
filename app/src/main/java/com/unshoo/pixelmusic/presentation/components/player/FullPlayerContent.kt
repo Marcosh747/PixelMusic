@@ -397,11 +397,15 @@ fun FullPlayerContent(
     }
 
     val onSongMetadataArtistClick = {
-        val resolvedArtistId = currentSongArtists.firstOrNull { it.id != 0L && it.id != -1L }?.id ?: song.artistId
+        val primaryArtist = currentSongArtists.firstOrNull { it.id != 0L && it.id != -1L }
+        val resolvedArtistIdStr = primaryArtist?.channelId 
+            ?: primaryArtist?.id?.toString() 
+            ?: song.artists.firstOrNull()?.channelId 
+            ?: song.artistId.toString()
         if (currentSongArtists.size > 1) {
             showArtistPicker = true
         } else {
-            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistId)
+            playerViewModel.triggerArtistNavigationFromPlayer(resolvedArtistIdStr)
         }
     }
 
@@ -510,7 +514,8 @@ fun FullPlayerContent(
             requestedScrollIndex = pendingCarouselIndex,
             onSongSelected = onAlbumSongSelected,
             onAlbumClick = { albumSong ->
-                playerViewModel.triggerAlbumNavigationFromPlayer(albumSong.albumId)
+                val resolvedAlbumIdStr = albumSong.albumBrowseId ?: albumSong.albumId.toString()
+                playerViewModel.triggerAlbumNavigationFromPlayer(resolvedAlbumIdStr)
             },
             modifier = modifier
         )
@@ -980,7 +985,8 @@ fun FullPlayerContent(
             sheetState = artistPickerSheetState,
             onDismiss = { showArtistPicker = false },
             onArtistClick = { artist ->
-                playerViewModel.triggerArtistNavigationFromPlayer(artist.id)
+                val artistIdStr = artist.channelId ?: artist.id.toString()
+                playerViewModel.triggerArtistNavigationFromPlayer(artistIdStr)
                 showArtistPicker = false
             }
         )

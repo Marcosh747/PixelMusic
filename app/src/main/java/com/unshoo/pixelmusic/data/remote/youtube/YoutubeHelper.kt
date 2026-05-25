@@ -859,8 +859,6 @@ object YoutubeHelper {
     private fun buildPlaybackProbeRanges(): List<String> =
         listOf(
             "bytes=0-0",
-            "bytes=0-524287",
-            "bytes=1048576-1049087",
         )
 
     private fun validateStatus(url: String): Boolean {
@@ -899,7 +897,7 @@ object YoutubeHelper {
                             return@use false
                         }
 
-                        val readable = response.body?.source()?.request(1) == true
+                        val readable = response.body.source().request(1) == true
                         if (readable) {
                             sawReadableProbe = true
                         }
@@ -933,19 +931,32 @@ object YoutubeHelper {
             .orEmpty()
         if (formats.isEmpty()) return emptyList()
 
-        return when {
-            lowQuality -> formats.sortedBy { it.bitrate }
-            maxBitrateKbps > 0 -> {
-                val bpsCeiling = maxBitrateKbps * 1000
-                val withinCeiling = formats.filter { it.bitrate <= bpsCeiling }
-                if (withinCeiling.isNotEmpty()) {
-                    withinCeiling.sortedByDescending { it.bitrate }
-                } else {
-                    formats.sortedBy { it.bitrate }
-                }
-            }
-            else -> formats.sortedByDescending { it.bitrate }
+        // Partition into M4A (mp4/mp4a) and Opus (webm/opus)
+        val (m4aFormats, opusFormats) = formats.partition { 
+            it.mimeType.contains("mp4", ignoreCase = true) || it.mimeType.contains("mp4a", ignoreCase = true)
         }
+
+        fun sortGroup(group: List<PlayerResponse.StreamingData.Format>): List<PlayerResponse.StreamingData.Format> {
+            if (group.isEmpty()) return emptyList()
+            return when {
+                lowQuality -> group.sortedBy { it.bitrate }
+                maxBitrateKbps > 0 -> {
+                    val bpsCeiling = maxBitrateKbps * 1000
+                    val withinCeiling = group.filter { it.bitrate <= bpsCeiling }
+                    if (withinCeiling.isNotEmpty()) {
+                        withinCeiling.sortedByDescending { it.bitrate }
+                    } else {
+                        group.sortedBy { it.bitrate }
+                    }
+                }
+                else -> group.sortedByDescending { it.bitrate }
+            }
+        }
+
+        val sortedM4a = sortGroup(m4aFormats)
+        val sortedOpus = sortGroup(opusFormats)
+
+        return sortedM4a + sortedOpus
     }
 
     /**

@@ -7,6 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.unshoo.pixelmusic.data.model.Album
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.repository.MusicRepository // Importar MusicRepository
+import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
+import unshoo.ianshulyadav.pixelmusic.innertube.YouTube as InnerTubeYouTube
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.unshoo.pixelmusic.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,7 +47,7 @@ class AlbumDetailViewModel @Inject constructor(
             if (albumId != null) {
                 loadAlbumData(albumId)
             } else {
-                _uiState.update { it.copy(error = context.getString(R.string.invalid_album_id), isLoading = false) }
+                loadOnlineAlbumData(albumIdString)
             }
         } else {
             _uiState.update { it.copy(error = context.getString(R.string.album_id_not_found), isLoading = false) }
@@ -104,6 +108,45 @@ class AlbumDetailViewModel @Inject constructor(
                 isLoading = false,
                 songs = songs
             )
+        }
+    }
+
+    private fun loadOnlineAlbumData(browseId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    InnerTubeYouTube.album(browseId)
+                }
+                result.onSuccess { albumPage ->
+                    val albumItem = albumPage.album
+                    val albumModel = Album(
+                        id = albumItem.browseId.hashCode().toLong(),
+                        title = albumItem.title,
+                        artist = albumItem.artists?.joinToString { it.name } ?: "",
+                        year = albumItem.year ?: 0,
+                        dateAdded = System.currentTimeMillis(),
+                        albumArtUriString = albumItem.thumbnail,
+                        songCount = albumPage.songs.size,
+                        albumArtist = albumItem.artists?.joinToString { it.name }
+                    )
+                    val songsModels = albumPage.songs.map { it.toNativeSong() }
+                    
+                    // Cache the online songs in local DB
+                    musicRepository.insertYoutubeSongs(songsModels)
+
+                    _uiState.value = AlbumDetailUiState(
+                        album = albumModel,
+                        songs = songsModels,
+                        isLoading = false,
+                        error = null
+                    )
+                }.onFailure { e ->
+                    _uiState.update { it.copy(error = e.localizedMessage ?: "Failed to load online album", isLoading = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.localizedMessage, isLoading = false) }
+            }
         }
     }
 }
