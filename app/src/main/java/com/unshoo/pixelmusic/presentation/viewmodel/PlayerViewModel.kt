@@ -2411,14 +2411,33 @@ class PlayerViewModel @Inject constructor(
             }
         }
     }
-
-    fun playQuickPicksRadio(quickPicks: List<Song>) {
+        private suspend fun resolveQuickPicksVideoId(first: com.unshoo.pixelmusic.data.model.Song): String? {
+            var videoId = first.youtubeId ?: if (first.id.startsWith("youtube_")) first.id.substringAfter("youtube_") else null
+            if (videoId == null) {
+                videoId = withContext(Dispatchers.IO) {
+                    try {
+                        val query = "${first.title} ${first.artist}"
+                        val searchResult = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.search(query, unshoo.ianshulyadav.pixelmusic.innertube.YouTube.SearchFilter.FILTER_SONG).getOrNull()
+                        val songItem = searchResult?.items?.firstOrNull { it is unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem } as? unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
+                        songItem?.id
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            }
+            return videoId
+        }
+       fun playQuickPicksRadio(quickPicks: List<Song>) {
         if (quickPicks.isEmpty()) return
         val first = quickPicks.first()
         playSongs(listOf(first), first, "Quick Picks Radio")
         
         viewModelScope.launch {
-            val videoId = first.youtubeId ?: first.id.substringAfter("youtube_")
+            val videoId = resolveQuickPicksVideoId(first)
+            if (videoId.isNullOrBlank()) {
+                Timber.w("Could not resolve videoId for Quick Picks Radio seed song")
+                return@launch
+            }
             val endpoint = unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint(videoId = videoId)
             
             _playerUiState.update { it.copy(isLoadingInitialSongs = true) }
@@ -2433,23 +2452,34 @@ class PlayerViewModel @Inject constructor(
                     
                     saveYoutubeSongsToDb(fullQueue)
                     
-                    withContext(Dispatchers.Main) {
-                        val controller = mediaController
-                        if (controller != null) {
-                            val newSongs = fullQueue.drop(1)
-                            val mediaItems = newSongs.map { MediaItemBuilder.build(it) }
-                            
-                            val totalCount = controller.mediaItemCount
-                            if (totalCount > 1) {
-                                controller.removeMediaItems(1, totalCount)
-                            }
-                            controller.addMediaItems(mediaItems)
-                            
-                            _playerUiState.update { 
-                                it.copy(
-                                    currentPlaybackQueue = fullQueue.toPlaybackQueue(),
-                                    currentQueueSourceName = "Quick Picks Radio"
-                                )
+                    // Delay/wait until the player starts playing the first song to avoid race conditions
+                    var retries = 0
+                    while (stablePlayerState.value.currentSong?.id != first.id && retries < 50) {
+                        delay(100)
+                        retries++
+                    }
+                    
+                    if (stablePlayerState.value.currentSong?.id == first.id) {
+                        withContext(Dispatchers.Main) {
+                            try {
+                                val player = dualPlayerEngine.masterPlayer
+                                val newSongs = fullQueue.drop(1)
+                                val mediaItems = newSongs.map { MediaItemBuilder.build(it) }
+                                
+                                val totalCount = player.mediaItemCount
+                                if (totalCount > 1) {
+                                    player.removeMediaItems(1, totalCount)
+                                }
+                                player.addMediaItems(mediaItems)
+                                
+                                _playerUiState.update { 
+                                    it.copy(
+                                        currentPlaybackQueue = fullQueue.toPlaybackQueue(),
+                                        currentQueueSourceName = "Quick Picks Radio"
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error dynamically updating ExoPlayer queue for quick picks radio")
                             }
                         }
                     }
@@ -2469,6 +2499,7 @@ class PlayerViewModel @Inject constructor(
             }
         }
     }
+
 
 
     private fun List<Song>.matchesSongOrder(contextSongs: List<Song>): Boolean {
@@ -3380,20 +3411,25 @@ class PlayerViewModel @Inject constructor(
     ) {
         cancelPendingFullQueuePlayback()
         fullQueuePlaybackJob = viewModelScope.launch {
-            val result = queueStateHolder.prepareShuffledQueueSuspending(songsToPlay, queueName, startAtZero)
-            if (result == null) {
-                sendToast(context.getString(R.string.player_no_songs_to_shuffle))
-                return@launch
+            try {
+                val result = queueStateHolder.prepareShuffledQueueSuspending(songsToPlay, queueName, startAtZero)
+                if (result == null) {
+                    sendToast(context.getString(R.string.player_no_songs_to_shuffle))
+                    return@launch
+                }
+
+                val (shuffledQueue, startSong) = result
+                transitionSchedulerJob?.cancel()
+
+                // Optimistically update shuffle state
+                playbackStateHolder.updateStablePlayerState { it.copy(isShuffleEnabled = true) }
+                launch { userPreferencesRepository.setShuffleOn(true) }
+
+                internalPlaySongs(shuffledQueue, startSong, queueName, playlistId)
+            } catch (e: Exception) {
+                Timber.e(e, "Error during playSongsShuffled")
+                sendToast("Failed to play shuffled songs")
             }
-
-            val (shuffledQueue, startSong) = result
-            transitionSchedulerJob?.cancel()
-
-            // Optimistically update shuffle state
-            playbackStateHolder.updateStablePlayerState { it.copy(isShuffleEnabled = true) }
-            launch { userPreferencesRepository.setShuffleOn(true) }
-
-            internalPlaySongs(shuffledQueue, startSong, queueName, playlistId)
         }
     }
 

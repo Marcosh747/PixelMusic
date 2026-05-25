@@ -820,6 +820,8 @@ class PlaybackStateHolder @Inject constructor(
                         MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE
                     }
                     castStateHolder.castPlayer?.setRepeatMode(newRepeatMode)
+                } catch (e: Exception) {
+                    Timber.tag(TAG).e(e, "Error toggling cast shuffle")
                 } finally {
                     lastShuffleToggleFinishedAtMs = SystemClock.elapsedRealtime()
                     _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = false) }
@@ -830,7 +832,7 @@ class PlaybackStateHolder @Inject constructor(
             shuffleToggleJob = coroutineScope.launch {
                 _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = true) }
                 try {
-                    val player = mediaController ?: return@launch
+                    val player = dualPlayerEngine.masterPlayer
                     if (currentSongs.isEmpty()) return@launch
 
                     val isCurrentlyShuffled = _stablePlayerState.value.isShuffleEnabled
@@ -989,6 +991,8 @@ class PlaybackStateHolder @Inject constructor(
                             player.play()
                         }
                     }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).e(e, "Error toggling local shuffle")
                 } finally {
                     lastShuffleToggleFinishedAtMs = SystemClock.elapsedRealtime()
                     _stablePlayerState.update { it.copy(isShuffleTransitionInProgress = false) }
