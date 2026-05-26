@@ -272,7 +272,7 @@ class PlaylistViewModel @Inject constructor(
                                     ?: it.currentPlaylistSongsSortOption,
                                 playlistSongsOrderMode = orderMode,
                                 playlistOrderModes = it.playlistOrderModes + (playlistId to orderMode),
-                                isLoading = false,
+                                isLoading = songsList.isEmpty() && playlist.source == "YOUTUBE",
                                 playlistNotFound = false
                             )
                         }
@@ -314,7 +314,8 @@ class PlaylistViewModel @Inject constructor(
                                                         songIds = updatedSongIds,
                                                         coverImageUri = ytPlaylist.thumbnail
                                                     ),
-                                                    currentPlaylistSongs = firstPageSongs
+                                                    currentPlaylistSongs = firstPageSongs,
+                                                    isLoading = false
                                                 )
                                             }
                                         }
@@ -356,13 +357,20 @@ class PlaylistViewModel @Inject constructor(
                                                             currentPlaylistDetails = state.currentPlaylistDetails?.copy(
                                                                 songIds = allNativeSongs.map { it.id }
                                                             ),
-                                                            currentPlaylistSongs = allNativeSongs
+                                                            currentPlaylistSongs = allNativeSongs,
+                                                            isLoading = false
                                                         )
                                                     }
                                                 }
                                             }
                                         } else {
                                             break
+                                        }
+                                    }
+                                } else {
+                                    withContext(Dispatchers.Main) {
+                                        if (_uiState.value.currentPlaylistDetails?.id == playlistId) {
+                                            _uiState.update { it.copy(isLoading = false) }
                                         }
                                     }
                                 }

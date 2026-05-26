@@ -213,8 +213,8 @@ fun ExploreScreen(
 
                         // 1) "For You" / Homepage content (includes albums, songs, playlists, artists)
                         if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
-                            nonTrendingSections.forEach { section ->
-                                item(key = "home_section_${section.title}_header") {
+                            nonTrendingSections.forEachIndexed { index, section ->
+                                item(key = "home_section_${section.title}_${index}_header") {
                                     val isQuickPicks = section.title.contains("quick picks", ignoreCase = true)
                                     val quickPicksSongs = remember(section.items) {
                                         section.items.filterIsInstance<SongItem>().map { it.toNativeSong() }
@@ -233,7 +233,7 @@ fun ExploreScreen(
                                         actionLabel = if (isQuickPicks && quickPicksSongs.isNotEmpty()) "Play All" else null
                                     )
                                 }
-                                item(key = "home_section_${section.title}_carousel") {
+                                item(key = "home_section_${section.title}_${index}_carousel") {
                                     YTItemCarousel(
                                         items = section.items,
                                         navController = navController,
@@ -245,17 +245,17 @@ fun ExploreScreen(
 
                             // Render Charts Sections in "All" view before Trending community playlists!
                             if (uiState.selectedFilter == "All" && uiState.chartsPage != null && uiState.chartsPage!!.sections.isNotEmpty()) {
-                                uiState.chartsPage!!.sections.forEach { chartSection ->
-                                    item(key = "chart_${chartSection.title}_header_in_all") {
+                                uiState.chartsPage!!.sections.forEachIndexed { index, chartSection ->
+                                    item(key = "chart_${chartSection.title}_${index}_header_in_all") {
                                         SectionHeader(title = chartSection.title)
                                     }
 
                                     val songItems = chartSection.items.filterIsInstance<SongItem>()
                                     if (songItems.isNotEmpty()) {
                                         val songListNative = songItems.map { it.toNativeSong() }
-                                        items(songItems.size) { index ->
-                                            val songItem = songItems[index]
-                                            val songNative = songListNative[index]
+                                        items(songItems.size) { idx ->
+                                            val songItem = songItems[idx]
+                                            val songNative = songListNative[idx]
                                             EnhancedSongListItem(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 song = songNative,
@@ -274,7 +274,7 @@ fun ExploreScreen(
                                             )
                                         }
                                     } else {
-                                        item(key = "chart_${chartSection.title}_list_in_all") {
+                                        item(key = "chart_${chartSection.title}_${index}_list_in_all") {
                                             LazyRow(
                                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -315,11 +315,11 @@ fun ExploreScreen(
                             }
 
                             // Render Trending homepage sections (e.g. Trending community playlists)
-                            trendingSections.forEach { section ->
-                                item(key = "home_section_${section.title}_header") {
+                            trendingSections.forEachIndexed { index, section ->
+                                item(key = "home_section_${section.title}_${index}_header") {
                                     SectionHeader(title = section.title)
                                 }
-                                item(key = "home_section_${section.title}_carousel") {
+                                item(key = "home_section_${section.title}_${index}_carousel") {
                                     YTItemCarousel(
                                         items = section.items,
                                         navController = navController,
@@ -377,17 +377,17 @@ fun ExploreScreen(
                         if (uiState.selectedFilter == "Charts" &&
                             uiState.chartsPage != null && uiState.chartsPage!!.sections.isNotEmpty()
                         ) {
-                            uiState.chartsPage!!.sections.forEach { chartSection ->
-                                item(key = "chart_${chartSection.title}_header") {
+                            uiState.chartsPage!!.sections.forEachIndexed { index, chartSection ->
+                                item(key = "chart_${chartSection.title}_${index}_header") {
                                     SectionHeader(title = chartSection.title)
                                 }
 
                                 val songItems = chartSection.items.filterIsInstance<SongItem>()
                                 if (songItems.isNotEmpty()) {
                                     val songListNative = songItems.map { it.toNativeSong() }
-                                    items(songItems.size) { index ->
-                                        val songItem = songItems[index]
-                                        val songNative = songListNative[index]
+                                    items(songItems.size) { idx ->
+                                        val songItem = songItems[idx]
+                                        val songNative = songListNative[idx]
                                         EnhancedSongListItem(
                                             modifier = Modifier.padding(horizontal = 16.dp),
                                             song = songNative,
@@ -406,7 +406,7 @@ fun ExploreScreen(
                                         )
                                     }
                                 } else {
-                                    item(key = "chart_${chartSection.title}_list") {
+                                    item(key = "chart_${chartSection.title}_${index}_list") {
                                         LazyRow(
                                             contentPadding = PaddingValues(horizontal = 16.dp),
                                             horizontalArrangement = Arrangement.spacedBy(16.dp)

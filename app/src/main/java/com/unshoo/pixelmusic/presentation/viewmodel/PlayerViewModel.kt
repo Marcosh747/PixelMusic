@@ -3480,9 +3480,14 @@ class PlayerViewModel @Inject constructor(
         startAtZero: Boolean = false
     ) {
         cancelPendingFullQueuePlayback()
+        val cappedSongs = if (songsToPlay.size > 500) {
+            songsToPlay.shuffled().take(500)
+        } else {
+            songsToPlay
+        }
         fullQueuePlaybackJob = viewModelScope.launch {
             try {
-                val result = queueStateHolder.prepareShuffledQueueSuspending(songsToPlay, queueName, startAtZero)
+                val result = queueStateHolder.prepareShuffledQueueSuspending(cappedSongs, queueName, startAtZero)
                 if (result == null) {
                     sendToast(context.getString(R.string.player_no_songs_to_shuffle))
                     return@launch
@@ -3892,16 +3897,6 @@ class PlayerViewModel @Inject constructor(
                 null
             }
 
-            if (videoId != null) {
-                launch(Dispatchers.IO) {
-                    try {
-                        unshoo.ianshulyadav.pixelmusic.innertube.YouTube.likeVideo(videoId, targetFavoriteState)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to sync favorite to YouTube for $videoId")
-                    }
-                }
-            }
-
             if (videoId != null && targetFavoriteState) {
                 launch(Dispatchers.IO) {
                     try {
@@ -3940,16 +3935,6 @@ class PlayerViewModel @Inject constructor(
                 song.id.substringAfter("youtube_")
             } else {
                 null
-            }
-
-            if (videoId != null) {
-                launch(Dispatchers.IO) {
-                    try {
-                        unshoo.ianshulyadav.pixelmusic.innertube.YouTube.likeVideo(videoId, targetFavoriteState)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to sync favorite to YouTube for $videoId")
-                    }
-                }
             }
 
             if (videoId != null && targetFavoriteState) {

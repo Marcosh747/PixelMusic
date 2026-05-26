@@ -476,7 +476,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.VideoTarget(videoId)
+                    target = LikeBody.Target(videoId = videoId)
                 )
             )
         }
@@ -491,7 +491,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.VideoTarget(videoId)
+                    target = LikeBody.Target(videoId = videoId)
                 )
             )
         }
@@ -536,7 +536,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PlaylistTarget(playlistId)
+                    target = LikeBody.Target(playlistId = playlistId)
                 )
             )
         }
@@ -551,7 +551,7 @@ class InnerTube {
             setBody(
                 LikeBody(
                     context = client.toContext(locale, visitorData, dataSyncId),
-                    target = LikeBody.Target.PlaylistTarget(playlistId)
+                    target = LikeBody.Target(playlistId = playlistId)
                 )
             )
         }
@@ -569,7 +569,7 @@ class InnerTube {
                     context = client.toContext(locale, visitorData, dataSyncId),
                     playlistId = playlistId.removePrefix("VL"),
                     actions = listOf(
-                        Action.AddVideoAction(addedVideoId = videoId)
+                        Action(action = "ACTION_ADD_VIDEO", addedVideoId = videoId)
                     )
                 )
             )
@@ -588,7 +588,7 @@ class InnerTube {
                     context = client.toContext(locale, visitorData, dataSyncId),
                     playlistId = playlistId.removePrefix("VL"),
                     actions = listOf(
-                        Action.AddPlaylistAction(addedFullListId = addPlaylistId)
+                        Action(action = "ACTION_ADD_PLAYLIST", addedFullListId = addPlaylistId)
                     )
                 )
             )
@@ -608,7 +608,8 @@ class InnerTube {
                     context = client.toContext(locale, visitorData, dataSyncId),
                     playlistId = playlistId.removePrefix("VL"),
                     actions = listOf(
-                        Action.RemoveVideoAction(
+                        Action(
+                            action = "ACTION_REMOVE_VIDEO",
                             removedVideoId = videoId,
                             setVideoId = setVideoId,
                         )
@@ -631,12 +632,12 @@ class InnerTube {
                     context = client.toContext(locale, visitorData, dataSyncId),
                     playlistId = playlistId,
                     actions = listOf(
-                        Action.MoveVideoAction(
+                        Action(
+                            action = "ACTION_MOVE_VIDEO_BEFORE",
                             movedSetVideoIdSuccessor = successorSetVideoId,
                             setVideoId = setVideoId,
                         )
                     )
-
                 )
             )
         }
@@ -669,7 +670,8 @@ class InnerTube {
                     context = client.toContext(locale, visitorData, dataSyncId),
                     playlistId = playlistId,
                     actions = listOf(
-                        Action.RenamePlaylistAction(
+                        Action(
+                            action = "ACTION_SET_PLAYLIST_NAME",
                             playlistName = name
                         )
                     )

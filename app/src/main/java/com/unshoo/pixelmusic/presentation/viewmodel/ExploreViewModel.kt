@@ -91,8 +91,10 @@ class ExploreViewModel @Inject constructor(
                     val communityPlaylists = communityPlaylistsResult?.items?.filterIsInstance<PlaylistItem>() ?: emptyList()
 
                     val rawSections = home?.sections ?: emptyList()
+                    var replacedTrending = false
                     var updatedSections = rawSections.map { section ->
-                        if (section.title.contains("trending", ignoreCase = true) && communityPlaylists.isNotEmpty()) {
+                        if (section.title.contains("trending", ignoreCase = true) && communityPlaylists.isNotEmpty() && !replacedTrending) {
+                            replacedTrending = true
                             HomePage.Section(
                                 title = "Trending community playlists",
                                 label = "Based on your activity for $userActivityQuery",

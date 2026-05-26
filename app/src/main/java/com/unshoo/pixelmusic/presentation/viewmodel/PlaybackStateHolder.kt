@@ -641,56 +641,28 @@ class PlaybackStateHolder @Inject constructor(
 
     private suspend fun applyNewQueueToPlayer(newQueue: List<Song>, targetIndex: Int) {
         val masterPlayer = dualPlayerEngine.masterPlayer
-        val currentMediaItemCount = masterPlayer.mediaItemCount
         val safeTargetIndex = targetIndex.coerceIn(0, (newQueue.size - 1).coerceAtLeast(0))
         val currentMediaItem = masterPlayer.currentMediaItem
         val currentPosition = masterPlayer.currentPosition
         val shouldResumePlayback = masterPlayer.playWhenReady || masterPlayer.isPlaying
 
-        // 1. Retrieve all existing MediaItems from player on Main thread
-        val existingMediaItems = List(currentMediaItemCount) { index ->
-            masterPlayer.getMediaItemAt(index)
-        }
-        val existingItemsMap = existingMediaItems.associateBy { it.mediaId }
-
-        // 2. Map new queue to MediaItem instances (reusing cached items to prevent audio pops/re-resolution)
+        // 1. Map new queue to MediaItem instances (reusing current playing item where possible to prevent pops)
         val preparedMediaItems = withContext(Dispatchers.Default) {
             newQueue.mapIndexed { index, song ->
                 if (index == safeTargetIndex && currentMediaItem != null && currentMediaItem.mediaId == song.id) {
                     currentMediaItem
                 } else {
-                    existingItemsMap[song.id] ?: MediaItemBuilder.build(song)
+                    MediaItemBuilder.build(song)
                 }
             }
         }
 
-        // 3. Atomically update the player's timeline on the Main thread
-        // We perform at most 2 timeline modifications to prevent Binder IPC flooding.
-        if (currentMediaItem != null && safeTargetIndex < preparedMediaItems.size &&
-            preparedMediaItems[safeTargetIndex].mediaId == currentMediaItem.mediaId
-        ) {
-            // Replace everything after the current index in ONE call
-            val afterStartIndex = safeTargetIndex + 1
-            val afterItems = preparedMediaItems.subList(afterStartIndex, preparedMediaItems.size)
-            if (currentMediaItemCount > afterStartIndex) {
-                masterPlayer.replaceMediaItems(afterStartIndex, currentMediaItemCount, afterItems)
-            } else if (afterItems.isNotEmpty()) {
-                masterPlayer.addMediaItems(afterItems)
-            }
-
-            // Replace everything before the current index in ONE call
-            val beforeItems = preparedMediaItems.subList(0, safeTargetIndex)
-            if (safeTargetIndex > 0) {
-                masterPlayer.replaceMediaItems(0, safeTargetIndex, beforeItems)
-            }
-        } else {
-            // Atomic fallback if current song is missing or mismatched
-            masterPlayer.setMediaItems(preparedMediaItems, safeTargetIndex, currentPosition)
-            if (shouldResumePlayback) {
-                masterPlayer.playWhenReady = true
-                if (!masterPlayer.isPlaying) {
-                    masterPlayer.play()
-                }
+        // 2. Atomically update the player's timeline on the Main thread.
+        masterPlayer.setMediaItems(preparedMediaItems, safeTargetIndex, currentPosition)
+        if (shouldResumePlayback) {
+            masterPlayer.playWhenReady = true
+            if (!masterPlayer.isPlaying) {
+                masterPlayer.play()
             }
         }
     }
@@ -754,12 +726,26 @@ class PlaybackStateHolder @Inject constructor(
                             else -> null
                         } ?: 0
 
+                        // Cap the shuffle candidate queue to 500 items max to prevent ANRs/resource exhaustion
+                        val (cappedSongs, safeCurrentIndex) = if (currentSongs.size > 500) {
+                            val currentItem = currentSongs.getOrNull(currentIndex)
+                            if (currentItem != null) {
+                                val otherItems = currentSongs.filterIndexed { index, _ -> index != currentIndex }
+                                val randomOthers = otherItems.shuffled().take(499)
+                                (listOf(currentItem) + randomOthers) to 0
+                            } else {
+                                currentSongs.take(500) to currentIndex.coerceAtMost(499)
+                            }
+                        } else {
+                            currentSongs to currentIndex
+                        }
+
                         val shuffledQueue = withContext(Dispatchers.Default) {
-                            QueueUtils.buildAnchoredShuffleQueueSuspending(currentSongs, currentIndex)
+                            QueueUtils.buildAnchoredShuffleQueueSuspending(cappedSongs, safeCurrentIndex)
                         }
 
                         // Apply shuffled queue atomically and smoothly
-                        applyNewQueueToPlayer(shuffledQueue, currentIndex)
+                        applyNewQueueToPlayer(shuffledQueue, safeCurrentIndex)
 
                         updateQueueCallback(shuffledQueue)
                         _stablePlayerState.update { it.copy(isShuffleEnabled = true) }
@@ -791,10 +777,24 @@ class PlaybackStateHolder @Inject constructor(
                             return@launch
                         }
 
-                        // Apply original queue atomically and smoothly
-                        applyNewQueueToPlayer(originalQueue, originalIndex)
+                        // Cap the restore queue to 500 items max to prevent ANRs/resource exhaustion
+                        val (cappedOriginalQueue, safeOriginalIndex) = if (originalQueue.size > 500) {
+                            val currentItem = originalQueue.getOrNull(originalIndex)
+                            if (currentItem != null) {
+                                val otherItems = originalQueue.filterIndexed { index, _ -> index != originalIndex }
+                                val randomOthers = otherItems.take(499) // take first 499 other items in order
+                                (listOf(currentItem) + randomOthers) to 0
+                            } else {
+                                originalQueue.take(500) to originalIndex.coerceAtMost(499)
+                            }
+                        } else {
+                            originalQueue to originalIndex
+                        }
 
-                        updateQueueCallback(originalQueue)
+                        // Apply original queue atomically and smoothly
+                        applyNewQueueToPlayer(cappedOriginalQueue, safeOriginalIndex)
+
+                        updateQueueCallback(cappedOriginalQueue)
                         _stablePlayerState.update { it.copy(isShuffleEnabled = false) }
                     }
                 } catch (e: Exception) {
@@ -807,5 +807,4 @@ class PlaybackStateHolder @Inject constructor(
             }
         }
     }
-
 }
