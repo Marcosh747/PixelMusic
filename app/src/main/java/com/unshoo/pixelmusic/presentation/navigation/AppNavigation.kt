@@ -43,6 +43,7 @@ import com.unshoo.pixelmusic.presentation.screens.EasterEggScreen
 import com.unshoo.pixelmusic.presentation.screens.ExperimentalSettingsScreen
 import com.unshoo.pixelmusic.presentation.screens.GenreDetailScreen
 import com.unshoo.pixelmusic.presentation.screens.HomeScreen
+import com.unshoo.pixelmusic.presentation.screens.ExploreScreen
 import com.unshoo.pixelmusic.presentation.screens.LibraryScreen
 import com.unshoo.pixelmusic.presentation.screens.MashupScreen
 import com.unshoo.pixelmusic.presentation.screens.NavBarCornerRadiusScreen
@@ -123,6 +124,45 @@ fun AppNavigation(
                         paddingValuesParent = paddingValues, 
                         playerViewModel = playerViewModel,
                         onOpenSidebar = onOpenSidebar
+                    )
+                }
+            }
+            composable(
+                Screen.Explore.route,
+                enterTransition = {
+                    mainRootEnterTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = enterTransition()
+                    )
+                },
+                exitTransition = {
+                    mainRootExitTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = exitTransition()
+                    )
+                },
+                popEnterTransition = {
+                    mainRootEnterTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = popEnterTransition()
+                    )
+                },
+                popExitTransition = {
+                    mainRootExitTransition(
+                        fromRoute = initialState.destination.route,
+                        toRoute = targetState.destination.route,
+                        fallback = popExitTransition()
+                    )
+                },
+            ) {
+                ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
+                    ExploreScreen(
+                        navController = navController,
+                        playerViewModel = playerViewModel,
+                        paddingValuesParent = paddingValues
                     )
                 }
             }

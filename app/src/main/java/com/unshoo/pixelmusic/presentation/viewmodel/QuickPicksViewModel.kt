@@ -73,19 +73,42 @@ class QuickPicksViewModel @Inject constructor(
     }
 
     private suspend fun fetchYoutubeSongs(category: String): List<Song> {
-        return if (category == "All") {
+        val songItems = mutableListOf<SongItem>()
+        if (category == "All") {
             // Fetch from YouTube home sections
-            val homeResult = YouTube.home().getOrNull() ?: return emptyList()
-            val songItems = homeResult.sections
-                .flatMap { it.items }
-                .filterIsInstance<SongItem>()
-                .take(50)
-            if (songItems.isNotEmpty()) {
-                return songItems.map { it.toNativeSong() }
+            val homeResult = YouTube.home().getOrNull()
+            if (homeResult != null) {
+                val songs = homeResult.sections
+                    .flatMap { it.items }
+                    .filterIsInstance<SongItem>()
+                songItems.addAll(songs)
+                
+                var continuation = homeResult.continuation
+                var attempts = 0
+                while (songItems.distinctBy { it.id }.size < 50 && continuation != null && attempts < 5) {
+                    val nextHome = YouTube.home(continuation = continuation).getOrNull()
+                    if (nextHome != null) {
+                        val nextSongs = nextHome.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+                        if (nextSongs.isEmpty()) break
+                        songItems.addAll(nextSongs)
+                        continuation = nextHome.continuation
+                    } else {
+                        break
+                    }
+                    attempts++
+                }
             }
-            // Fallback: search "top songs"
-            val searchResult = YouTube.search("top songs 2024", SearchFilter.FILTER_SONG).getOrNull()
-            searchResult?.items?.filterIsInstance<SongItem>()?.take(50)?.map { it.toNativeSong() } ?: emptyList()
+
+            val distinctSongs = songItems.distinctBy { it.id }
+            if (distinctSongs.size >= 50) {
+                return distinctSongs.take(50).map { it.toNativeSong() }
+            }
+
+            // Fallback / fill to 50: search "top songs"
+            val searchResult = YouTube.search("top songs 2026", SearchFilter.FILTER_SONG).getOrNull()
+            val fallbackSongs = searchResult?.items?.filterIsInstance<SongItem>().orEmpty()
+            val combined = (distinctSongs + fallbackSongs).distinctBy { it.id }
+            return combined.take(50).map { it.toNativeSong() }
         } else {
             // Category-specific YouTube search
             val query = when (category) {
@@ -105,7 +128,23 @@ class QuickPicksViewModel @Inject constructor(
                 else -> "$category songs"
             }
             val searchResult = YouTube.search(query, SearchFilter.FILTER_SONG).getOrNull()
-            searchResult?.items?.filterIsInstance<SongItem>()?.take(50)?.map { it.toNativeSong() } ?: emptyList()
+            searchResult?.items?.filterIsInstance<SongItem>()?.let { songItems.addAll(it) }
+            
+            var continuation = searchResult?.continuation
+            var attempts = 0
+            while (songItems.distinctBy { it.id }.size < 50 && continuation != null && attempts < 5) {
+                val nextSearch = YouTube.searchContinuation(continuation).getOrNull()
+                if (nextSearch != null) {
+                    val nextSongs = nextSearch.items.filterIsInstance<SongItem>()
+                    if (nextSongs.isEmpty()) break
+                    songItems.addAll(nextSongs)
+                    continuation = nextSearch.continuation
+                } else {
+                    break
+                }
+                attempts++
+            }
+            return songItems.distinctBy { it.id }.take(50).map { it.toNativeSong() }
         }
     }
 }

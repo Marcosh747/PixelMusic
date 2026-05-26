@@ -193,7 +193,16 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":innertube"))
+    // InnerTube dependencies merged
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.okhttp.dnsoverhttps)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.json)
+    implementation(libs.ktor.client.encoding)
+    implementation(libs.brotli)
+    implementation(libs.re2j)
+    implementation(libs.rhino)
     // Core & Optimization
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.profileinstaller)
@@ -306,6 +315,18 @@ dependencies {
 
     // Projects
     implementation(project(":shared"))
+
+    // InnerTube Merged Dependencies
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.okhttp.dnsoverhttps)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.json)
+    implementation(libs.ktor.client.encoding)
+    implementation(libs.brotli)
+    implementation(libs.newpipe.extractor)
+    implementation(libs.re2j)
+    implementation(libs.rhino)
 
     // Testing (Unit)
     testImplementation(libs.junit.jupiter.api)
