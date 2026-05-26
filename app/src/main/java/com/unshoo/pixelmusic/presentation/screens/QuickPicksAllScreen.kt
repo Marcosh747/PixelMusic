@@ -56,7 +56,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import com.unshoo.pixelmusic.presentation.components.MiniPlayerHeight
 import com.unshoo.pixelmusic.presentation.components.subcomps.EnhancedSongListItem
-import com.unshoo.pixelmusic.presentation.viewmodel.QUICK_PICKS_CATEGORIES
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.QuickPicksViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -72,6 +71,7 @@ fun QuickPicksAllScreen(
     val songs by quickPicksViewModel.quickPicks.collectAsStateWithLifecycle()
     val isLoading by quickPicksViewModel.isLoading.collectAsStateWithLifecycle()
     val selectedCategory by quickPicksViewModel.selectedCategory.collectAsStateWithLifecycle()
+    val categories by quickPicksViewModel.categories.collectAsStateWithLifecycle()
 
     val currentSongId by androidx.compose.runtime.remember(playerViewModel.stablePlayerState) {
         playerViewModel.stablePlayerState.map { it.currentSong?.id }.distinctUntilChanged()
@@ -130,7 +130,7 @@ fun QuickPicksAllScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(vertical = 8.dp)
                 ) {
-                    items(QUICK_PICKS_CATEGORIES, key = { it }) { category ->
+                    items(categories, key = { it }) { category ->
                         FilterChip(
                             selected = selectedCategory == category,
                             onClick = { quickPicksViewModel.setCategory(category) },

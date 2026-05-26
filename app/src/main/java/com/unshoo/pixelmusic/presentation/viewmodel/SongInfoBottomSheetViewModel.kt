@@ -13,6 +13,7 @@ import com.unshoo.pixelmusic.data.service.wear.WearPhoneTransferSender
 import com.unshoo.pixelmusic.shared.WearTransferProgress
 import com.unshoo.pixelmusic.utils.AudioMeta
 import com.unshoo.pixelmusic.utils.AudioMetaUtils
+import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import javax.inject.Inject
@@ -292,6 +293,36 @@ class SongInfoBottomSheetViewModel @Inject constructor(
             contentUriString.startsWith("gdrive://") -> "Google Drive"
             contentUriString.startsWith("youtube://") || contentUriString.contains("youtube") -> "YouTube"
             else -> null
+        }
+    }
+
+    fun likeOnYouTube(song: Song, like: Boolean, onResult: (Boolean) -> Unit) {
+        val videoId = song.youtubeId ?: if (song.contentUriString.startsWith("youtube://")) {
+            song.contentUriString.substringAfter("youtube://")
+        } else if (song.id.startsWith("youtube_")) {
+            song.id.substringAfter("youtube_")
+        } else {
+            onResult(false)
+            return
+        }
+        viewModelScope.launch {
+            val result = YouTube.likeVideo(videoId, like)
+            onResult(result.isSuccess)
+        }
+    }
+
+    fun addToYouTubePlaylist(playlistId: String, song: Song, onResult: (String?) -> Unit) {
+        val videoId = song.youtubeId ?: if (song.contentUriString.startsWith("youtube://")) {
+            song.contentUriString.substringAfter("youtube://")
+        } else if (song.id.startsWith("youtube_")) {
+            song.id.substringAfter("youtube_")
+        } else {
+            onResult(null)
+            return
+        }
+        viewModelScope.launch {
+            val result = YouTube.addToPlaylist(playlistId, videoId)
+            onResult(result.getOrNull())
         }
     }
 }

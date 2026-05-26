@@ -71,6 +71,7 @@ object YoutubeHelper {
     private val localFilePathCache = LruCache<String, String>(200)
 
     private val failedStreamClientsUntil = ConcurrentHashMap<String, Long>()
+    val playbackTrackingCache = ConcurrentHashMap<String, String>()
     private const val FAILED_CLIENT_BACKOFF_MS = 10 * 60 * 1000L
     @Volatile private var lastSuccessfulClientKey: String? = null
 
@@ -1089,6 +1090,9 @@ object YoutubeHelper {
                 }
 
                 if (resolvedUrl != null) {
+                    playerResponse.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let { baseUrl ->
+                        playbackTrackingCache[videoId] = baseUrl
+                    }
                     return resolvedUrl
                 }
 

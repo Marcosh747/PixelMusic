@@ -55,12 +55,18 @@ class PlaybackStatsRepository @Inject constructor(
         val timestamp: Long,
         val durationMs: Long,
         val startTimestamp: Long? = null,
-        val endTimestamp: Long? = null
+        val endTimestamp: Long? = null,
+        val title: String? = null,
+        val artist: String? = null,
+        val thumbnail: String? = null
     )
 
     data class PlaybackHistoryEntry(
         val songId: String,
-        val timestamp: Long
+        val timestamp: Long,
+        val title: String? = null,
+        val artist: String? = null,
+        val thumbnail: String? = null
     )
 
     data class SongPlaybackSummary(
@@ -165,7 +171,10 @@ class PlaybackStatsRepository @Inject constructor(
     suspend fun recordPlayback(
         songId: String,
         durationMs: Long,
-        timestamp: Long = System.currentTimeMillis()
+        timestamp: Long = System.currentTimeMillis(),
+        title: String? = null,
+        artist: String? = null,
+        thumbnail: String? = null
     ) = withContext(Dispatchers.IO) {
         if (songId.isBlank()) return@withContext
         val coercedTimestamp = timestamp.coerceAtLeast(0L)
@@ -176,7 +185,10 @@ class PlaybackStatsRepository @Inject constructor(
             timestamp = coercedTimestamp,
             durationMs = coercedDuration,
             startTimestamp = start,
-            endTimestamp = coercedTimestamp
+            endTimestamp = coercedTimestamp,
+            title = title,
+            artist = artist,
+            thumbnail = thumbnail
         )
         val writeSucceeded = updateEventsAtomically { events ->
             val cutoff = sanitizedEvent.endMillis() - MAX_HISTORY_AGE_MS
@@ -468,7 +480,10 @@ class PlaybackStatsRepository @Inject constructor(
             .map { event ->
                 PlaybackHistoryEntry(
                     songId = event.songId,
-                    timestamp = event.timestamp.coerceAtLeast(0L)
+                    timestamp = event.timestamp.coerceAtLeast(0L),
+                    title = event.title,
+                    artist = event.artist,
+                    thumbnail = event.thumbnail
                 )
             }
             .toList()

@@ -18,9 +18,10 @@ fun mapRecentlyPlayedSongs(
     nowMillis: Long = System.currentTimeMillis(),
     maxItems: Int = Int.MAX_VALUE
 ): List<RecentlyPlayedSongUiModel> {
-    if (maxItems <= 0 || playbackHistory.isEmpty() || songs.isEmpty()) return emptyList()
+    if (maxItems <= 0 || playbackHistory.isEmpty()) return emptyList()
 
     val songById = songs.associateBy { it.id }
+    val songByYoutubeId = songs.filter { it.youtubeId != null }.associateBy { it.youtubeId }
     val recentSongIds = collectRecentlyPlayedSongIds(
         playbackHistory = playbackHistory,
         range = range,
@@ -52,7 +53,24 @@ fun mapRecentlyPlayedSongs(
         if (!seenSongIds.add(entry.songId)) continue
         if (entry.songId !in recentSongIdSet) continue
 
-        val song = songById[entry.songId] ?: continue
+        val cleanYoutubeId = if (entry.songId.startsWith("youtube_")) entry.songId.substringAfter("youtube_") else entry.songId
+        val song = songById[entry.songId]
+            ?: songByYoutubeId[cleanYoutubeId]
+            ?: run {
+                val title = entry.title
+                if (!title.isNullOrBlank()) {
+                    Song.emptySong().copy(
+                        id = entry.songId,
+                        title = title,
+                        artist = entry.artist.orEmpty(),
+                        albumArtUriString = entry.thumbnail,
+                        youtubeId = cleanYoutubeId
+                    )
+                } else {
+                    null
+                }
+            } ?: continue
+
         deduped += RecentlyPlayedSongUiModel(
             song = song,
             lastPlayedTimestamp = safeTimestamp

@@ -14,7 +14,6 @@ import com.unshoo.pixelmusic.data.model.SortOption
 import com.unshoo.pixelmusic.data.playlist.M3uManager
 import com.unshoo.pixelmusic.data.preferences.PlaylistPreferencesRepository
 import com.unshoo.pixelmusic.data.remote.youtube.DatastoreRepository
-import com.unshoo.pixelmusic.data.remote.youtube.YoutubeRequestHelper
 import com.unshoo.pixelmusic.data.repository.MusicRepository
 import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
 import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
@@ -97,6 +96,8 @@ class PlaylistViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(PlaylistUiState())
     val uiState: StateFlow<PlaylistUiState> = _uiState.asStateFlow()
+
+    private var currentPlaylistSetVideoIds: List<String> = emptyList()
 
     val youtubeLoggedInFlow = datastoreRepository.cookies
         .map { it.toRawCookie().isNotEmpty() }
@@ -248,7 +249,7 @@ class PlaylistViewModel @Inject constructor(
                     val playlist = playlistPreferencesRepository.userPlaylistsFlow.first()
                         .find { it.id == playlistId }
 
-                    if (playlist != null) {
+                    if (playlist != null && playlist.source != "YOUTUBE") {
                         val orderMode = _uiState.value.playlistOrderModes[playlistId]
                             ?: PlaylistSongsOrderMode.Manual
 
@@ -311,6 +312,29 @@ class PlaylistViewModel @Inject constructor(
                                 coverImageUri = ytPlaylist.thumbnail,
                                 source = "YOUTUBE"
                             )
+
+                            // Update local cache/preferences to keep them live-synced
+                            val existing = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+                            if (existing == null) {
+                                playlistPreferencesRepository.createPlaylist(
+                                    name = ytPlaylist.title,
+                                    songIds = nativeSongs.map { it.id },
+                                    coverImageUri = ytPlaylist.thumbnail,
+                                    customId = playlistId,
+                                    source = "YOUTUBE"
+                                )
+                            } else {
+                                playlistPreferencesRepository.updatePlaylist(
+                                    existing.copy(
+                                        name = ytPlaylist.title,
+                                        songIds = nativeSongs.map { it.id },
+                                        coverImageUri = ytPlaylist.thumbnail
+                                    )
+                                )
+                            }
+
+                            currentPlaylistSetVideoIds = allYtSongs.mapNotNull { it.setVideoId }
+
                             _uiState.update {
                                 it.copy(
                                     currentPlaylistDetails = playlistModel,
@@ -414,14 +438,18 @@ class PlaylistViewModel @Inject constructor(
                         loadedSongs.mapNotNull { it.youtubeId ?: if (it.id.startsWith("youtube_")) it.id.removePrefix("youtube_") else null }
                     }
                     try {
-                        val jsonResponse = withContext(Dispatchers.IO) {
-                            YoutubeRequestHelper.createPlaylist(name, youtubeVideoIds, settings, privacyStatus)
+                        val result = withContext(Dispatchers.IO) {
+                            YouTube.createPlaylist(name)
                         }
-                        val playlistIdRegex = """\"playlistId\"\s*:\s*\"([^\"]+)\"""".toRegex()
-                        val extractedId = playlistIdRegex.find(jsonResponse)?.groupValues?.get(1)
-                        if (extractedId != null) {
-                            remotePlaylistId = extractedId
+                        if (result.isSuccess) {
+                            val playlistId = result.getOrThrow()
+                            remotePlaylistId = playlistId
                             finalSource = "YOUTUBE"
+                            youtubeVideoIds.forEach { videoId ->
+                                withContext(Dispatchers.IO) {
+                                    YouTube.addToPlaylist(playlistId, videoId)
+                                }
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e("PlaylistViewModel", "Failed to create remote YouTube playlist", e)
@@ -613,7 +641,17 @@ class PlaylistViewModel @Inject constructor(
     fun deletePlaylist(playlistId: String) {
         if (isFolderPlaylistId(playlistId)) return
         viewModelScope.launch {
+            val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
             playlistPreferencesRepository.deletePlaylist(playlistId)
+            if (playlist != null && playlist.source == "YOUTUBE") {
+                try {
+                    withContext(Dispatchers.IO) {
+                        YouTube.deletePlaylist(playlist.id)
+                    }
+                } catch (e: Exception) {
+                    Log.e("PlaylistViewModel", "Failed to delete remote YouTube playlist", e)
+                }
+            }
         }
     }
 
@@ -657,6 +695,16 @@ class PlaylistViewModel @Inject constructor(
                             name = newName
                         )
                     )
+                }
+            }
+            val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+            if (playlist != null && playlist.source == "YOUTUBE") {
+                try {
+                    withContext(Dispatchers.IO) {
+                        YouTube.renamePlaylist(playlist.id, newName)
+                    }
+                } catch (e: Exception) {
+                    Log.e("PlaylistViewModel", "Failed to rename remote YouTube playlist", e)
                 }
             }
         }
@@ -768,7 +816,9 @@ class PlaylistViewModel @Inject constructor(
                     if (videoIds.isNotEmpty()) {
                         try {
                             withContext(Dispatchers.IO) {
-                                YoutubeRequestHelper.addVideosToPlaylist(playlist.id, videoIds, settings)
+                                videoIds.forEach { videoId ->
+                                    YouTube.addToPlaylist(playlist.id, videoId)
+                                }
                             }
                         } catch (e: Exception) {
                             Log.e("PlaylistViewModel", "Failed to sync added songs to YouTube playlist", e)
@@ -913,7 +963,7 @@ class PlaylistViewModel @Inject constructor(
                         if (videoId != null) {
                             try {
                                 withContext(Dispatchers.IO) {
-                                    YoutubeRequestHelper.addVideosToPlaylist(playlist.id, listOf(videoId), settings)
+                                    YouTube.addToPlaylist(playlist.id, videoId)
                                 }
                             } catch (e: Exception) {
                                 Log.e("PlaylistViewModel", "Failed to sync added song to YouTube playlist", e)
@@ -938,7 +988,9 @@ class PlaylistViewModel @Inject constructor(
                         if (videoIds.isNotEmpty()) {
                             try {
                                 withContext(Dispatchers.IO) {
-                                    YoutubeRequestHelper.addVideosToPlaylist(playlist.id, videoIds, settings)
+                                    videoIds.forEach { videoId ->
+                                        YouTube.addToPlaylist(playlist.id, videoId)
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.e("PlaylistViewModel", "Failed to sync added songs to YouTube playlist", e)
@@ -957,6 +1009,23 @@ class PlaylistViewModel @Inject constructor(
             if (_uiState.value.currentPlaylistDetails?.id == playlistId) {
                 _uiState.update {
                     it.copy(currentPlaylistSongs = it.currentPlaylistSongs.filterNot { s -> s.id == songIdToRemove })
+                }
+            }
+            val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+            if (playlist != null && playlist.source == "YOUTUBE") {
+                val song = musicRepository.getSongsByIds(listOf(songIdToRemove)).first().firstOrNull()
+                val videoId = song?.youtubeId ?: if (songIdToRemove.startsWith("youtube_")) songIdToRemove.removePrefix("youtube_") else songIdToRemove
+                if (videoId.isNotBlank()) {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val setVideoIds = YouTube.playlistEntrySetVideoIds(playlist.id, videoId).getOrNull()
+                            setVideoIds?.forEach { setVideoId ->
+                                YouTube.removeFromPlaylist(playlist.id, videoId, setVideoId)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("PlaylistViewModel", "Failed to sync song removal to YouTube playlist", e)
+                    }
                 }
             }
         }
@@ -982,6 +1051,20 @@ class PlaylistViewModel @Inject constructor(
                         playlistSongsOrderMode = PlaylistSongsOrderMode.Manual,
                         playlistOrderModes = updatedModes
                     )
+                }
+
+                val playlist = playlistPreferencesRepository.userPlaylistsFlow.first().find { it.id == playlistId }
+                if (playlist != null && playlist.source == "YOUTUBE") {
+                    val setVideoIds = currentPlaylistSetVideoIds.toMutableList()
+                    if (fromIndex in setVideoIds.indices && toIndex in setVideoIds.indices) {
+                        val setVideoId = setVideoIds.removeAt(fromIndex)
+                        setVideoIds.add(toIndex, setVideoId)
+                        val successorSetVideoId = if (toIndex + 1 < setVideoIds.size) setVideoIds[toIndex + 1] else null
+                        currentPlaylistSetVideoIds = setVideoIds
+                        withContext(Dispatchers.IO) {
+                            YouTube.moveSongPlaylist(playlistId, setVideoId, successorSetVideoId)
+                        }
+                    }
                 }
             }
         }

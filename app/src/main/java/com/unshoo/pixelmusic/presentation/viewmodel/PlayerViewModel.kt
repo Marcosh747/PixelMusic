@@ -723,6 +723,7 @@ class PlayerViewModel @Inject constructor(
     private var pendingLyricsSave: PendingLyricsSave? = null
     private var pendingDeleteSong: Song? = null
     private var pendingDeleteCallback: ((Boolean) -> Unit)? = null
+    private var lastRegisteredVideoId: String? = null
 
     private val _albumNavigationRequests = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val albumNavigationRequests = _albumNavigationRequests.asSharedFlow()
@@ -3112,6 +3113,26 @@ class PlayerViewModel @Inject constructor(
                     _isSheetVisible.value = true
                     clearPreparingSongIfMatching(playerCtrl.currentMediaItem?.mediaId)
                     startProgressUpdates()
+
+                    val currentItem = playerCtrl.currentMediaItem
+                    val songId = currentItem?.mediaId
+                    if (songId != null) {
+                        val song = resolveSongFromMediaItem(currentItem)
+                        val videoId = song?.youtubeId ?: if (songId.startsWith("youtube_")) songId.substringAfter("youtube_") else null
+                        if (videoId != null && videoId != lastRegisteredVideoId) {
+                            lastRegisteredVideoId = videoId
+                            viewModelScope.launch(Dispatchers.IO) {
+                                val baseUrl = com.unshoo.pixelmusic.data.remote.youtube.YoutubeHelper.playbackTrackingCache[videoId]
+                                if (baseUrl != null) {
+                                    val playlistId = currentItem.mediaMetadata.extras?.getString("playlistId")
+                                    unshoo.ianshulyadav.pixelmusic.innertube.YouTube.registerPlayback(
+                                        playlistId = playlistId,
+                                        playbackTracking = baseUrl
+                                    )
+                                }
+                            }
+                        }
+                    }
                 } else {
                     stopProgressUpdates()
                     val pausedPosition = playerCtrl.currentPosition.coerceAtLeast(0L)
@@ -3130,6 +3151,7 @@ class PlayerViewModel @Inject constructor(
                 preparePlaybackAudioMetadataForMedia(mediaItem?.mediaId)
                 transitionSchedulerJob?.cancel()
                 lyricsStateHolder.cancelLoading()
+                lastRegisteredVideoId = null
                 transitionSchedulerJob = viewModelScope.launch {
                     if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                         val activeEotSongId = EotStateHolder.eotTargetSongId.value
@@ -3845,6 +3867,16 @@ class PlayerViewModel @Inject constructor(
                 null
             }
 
+            if (videoId != null) {
+                launch(Dispatchers.IO) {
+                    try {
+                        unshoo.ianshulyadav.pixelmusic.innertube.YouTube.likeVideo(videoId, targetFavoriteState)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to sync favorite to YouTube for $videoId")
+                    }
+                }
+            }
+
             if (videoId != null && targetFavoriteState) {
                 launch(Dispatchers.IO) {
                     try {
@@ -3883,6 +3915,16 @@ class PlayerViewModel @Inject constructor(
                 song.id.substringAfter("youtube_")
             } else {
                 null
+            }
+
+            if (videoId != null) {
+                launch(Dispatchers.IO) {
+                    try {
+                        unshoo.ianshulyadav.pixelmusic.innertube.YouTube.likeVideo(videoId, targetFavoriteState)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to sync favorite to YouTube for $videoId")
+                    }
+                }
             }
 
             if (videoId != null && targetFavoriteState) {

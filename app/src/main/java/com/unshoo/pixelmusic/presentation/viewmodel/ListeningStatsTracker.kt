@@ -71,7 +71,10 @@ class ListeningStatsTracker @Inject constructor(
             positionMs = positionMs,
             durationMs = durationMs,
             fallbackDurationMs = song?.duration ?: 0L,
-            isPlaying = isPlaying
+            isPlaying = isPlaying,
+            title = song?.title,
+            artist = song?.displayArtist,
+            thumbnail = song?.albumArtUriString
         )
     }
 
@@ -97,7 +100,10 @@ class ListeningStatsTracker @Inject constructor(
         positionMs: Long,
         durationMs: Long,
         fallbackDurationMs: Long,
-        isPlaying: Boolean
+        isPlaying: Boolean,
+        title: String? = null,
+        artist: String? = null,
+        thumbnail: String? = null
     ) {
         finalizeCurrentSession()
         val safeSongId = songId?.takeIf { it.isNotBlank() }
@@ -118,7 +124,10 @@ class ListeningStatsTracker @Inject constructor(
             lastRealtimeMs = nowRealtime,
             lastUpdateEpochMs = nowEpoch,
             isPlaying = isPlaying,
-            isVoluntary = pendingVoluntarySongId == safeSongId
+            isVoluntary = pendingVoluntarySongId == safeSongId,
+            title = title,
+            artist = artist,
+            thumbnail = thumbnail
         )
         if (pendingVoluntarySongId == safeSongId) {
             pendingVoluntarySongId = null
@@ -158,7 +167,10 @@ class ListeningStatsTracker @Inject constructor(
             positionMs = positionMs,
             durationMs = durationMs,
             fallbackDurationMs = song?.duration ?: 0L,
-            isPlaying = isPlaying
+            isPlaying = isPlaying,
+            title = song?.title,
+            artist = song?.displayArtist,
+            thumbnail = song?.albumArtUriString
         )
     }
 
@@ -184,7 +196,10 @@ class ListeningStatsTracker @Inject constructor(
         positionMs: Long,
         durationMs: Long,
         fallbackDurationMs: Long,
-        isPlaying: Boolean
+        isPlaying: Boolean,
+        title: String? = null,
+        artist: String? = null,
+        thumbnail: String? = null
     ) {
         val safeSongId = songId?.takeIf { it.isNotBlank() }
         if (safeSongId == null) {
@@ -207,7 +222,10 @@ class ListeningStatsTracker @Inject constructor(
             positionMs = positionMs,
             durationMs = durationMs,
             fallbackDurationMs = fallbackDurationMs,
-            isPlaying = isPlaying
+            isPlaying = isPlaying,
+            title = title,
+            artist = artist,
+            thumbnail = thumbnail
         )
     }
 
@@ -238,7 +256,10 @@ class ListeningStatsTracker @Inject constructor(
             val songId = session.songId
             val historyEntry = PlaybackStatsRepository.PlaybackHistoryEntry(
                 songId = songId,
-                timestamp = timestamp
+                timestamp = timestamp,
+                title = session.title,
+                artist = session.artist,
+                thumbnail = session.thumbnail
             )
             _playbackHistory.update { current ->
                 (listOf(historyEntry) + current).take(MAX_INTERNAL_PLAYBACK_HISTORY_ITEMS)
@@ -247,7 +268,10 @@ class ListeningStatsTracker @Inject constructor(
                 songId = songId,
                 listened = listened,
                 timestamp = timestamp,
-                forceSynchronous = forceSynchronousPersistence
+                forceSynchronous = forceSynchronousPersistence,
+                title = session.title,
+                artist = session.artist,
+                thumbnail = session.thumbnail
             )
         }
         currentSession = null
@@ -272,18 +296,35 @@ class ListeningStatsTracker @Inject constructor(
         songId: String,
         listened: Long,
         timestamp: Long,
-        forceSynchronous: Boolean
+        forceSynchronous: Boolean,
+        title: String? = null,
+        artist: String? = null,
+        thumbnail: String? = null
     ) {
         persistenceScope.launch {
             runCatching {
-                persistPlaybackInternal(songId = songId, listened = listened, timestamp = timestamp)
+                persistPlaybackInternal(
+                    songId = songId, 
+                    listened = listened, 
+                    timestamp = timestamp,
+                    title = title,
+                    artist = artist,
+                    thumbnail = thumbnail
+                )
             }.onFailure { throwable ->
                 Timber.e(throwable, "Failed to persist listening session for song=%s", songId)
             }
         }
     }
 
-    private suspend fun persistPlaybackInternal(songId: String, listened: Long, timestamp: Long) {
+    private suspend fun persistPlaybackInternal(
+        songId: String, 
+        listened: Long, 
+        timestamp: Long,
+        title: String? = null,
+        artist: String? = null,
+        thumbnail: String? = null
+    ) {
         dailyMixManager.recordPlay(
             songId = songId,
             songDurationMs = listened,
@@ -292,7 +333,10 @@ class ListeningStatsTracker @Inject constructor(
         playbackStatsRepository.recordPlayback(
             songId = songId,
             durationMs = listened,
-            timestamp = timestamp
+            timestamp = timestamp,
+            title = title,
+            artist = artist,
+            thumbnail = thumbnail
         )
     }
 
@@ -330,5 +374,8 @@ data class ActiveSession(
     var lastRealtimeMs: Long,
     var lastUpdateEpochMs: Long,
     var isPlaying: Boolean,
-    val isVoluntary: Boolean
+    val isVoluntary: Boolean,
+    val title: String? = null,
+    val artist: String? = null,
+    val thumbnail: String? = null
 )

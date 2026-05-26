@@ -20,6 +20,7 @@ import androidx.work.NetworkType
 import androidx.work.WorkManager
 import com.unshoo.pixelmusic.data.remote.youtube.YoutubePlaylistDataSource
 import com.unshoo.pixelmusic.data.remote.youtube.YoutubeRequestHelper
+import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
 import com.unshoo.pixelmusic.data.model.youtube.Playlist
 import com.unshoo.pixelmusic.data.model.youtube.PlaylistInfo
 import com.unshoo.pixelmusic.data.database.AlbumEntity
@@ -1880,10 +1881,16 @@ constructor(
                                 if (matchingRemote == null) {
                                     Log.i(TAG, "Creating remote YouTube playlist '${localPlaylist.name}' with ${localYoutubeVideoIds.size} songs...")
                                     try {
-                                        val jsonResponse = YoutubeRequestHelper.createPlaylist(localPlaylist.name, localYoutubeVideoIds, settings)
-                                        val playlistIdRegex = """\"playlistId\"\s*:\s*\"([^\"]+)\"""".toRegex()
-                                        val remotePlaylistId = playlistIdRegex.find(jsonResponse)?.groupValues?.get(1)
-                                        Log.i(TAG, "Successfully created remote YouTube playlist: $remotePlaylistId")
+                                        val result = YouTube.createPlaylist(localPlaylist.name)
+                                        if (result.isSuccess) {
+                                            val remotePlaylistId = result.getOrThrow()
+                                            localYoutubeVideoIds.forEach { videoId ->
+                                                YouTube.addToPlaylist(remotePlaylistId, videoId)
+                                            }
+                                            Log.i(TAG, "Successfully created remote YouTube playlist: $remotePlaylistId")
+                                        } else {
+                                            Log.e(TAG, "Failed to create remote YouTube playlist", result.exceptionOrNull())
+                                        }
                                     } catch (e: Exception) {
                                         Log.e(TAG, "Failed to create remote YouTube playlist", e)
                                     }
@@ -1897,7 +1904,9 @@ constructor(
                                         
                                         if (missingVideoIds.isNotEmpty()) {
                                             Log.i(TAG, "Adding ${missingVideoIds.size} missing songs to remote YouTube playlist '${localPlaylist.name}'...")
-                                            YoutubeRequestHelper.addVideosToPlaylist(matchingRemote.id, missingVideoIds, settings)
+                                            missingVideoIds.forEach { videoId ->
+                                                YouTube.addToPlaylist(matchingRemote.id, videoId)
+                                            }
                                         }
                                     } catch (e: Exception) {
                                         Log.e(TAG, "Failed to sync songs to existing remote YouTube playlist", e)

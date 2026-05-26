@@ -104,6 +104,33 @@ class LyricsStateHolder @Inject constructor(
      * @param song The song to load lyrics for
      * @param sourcePreference The preferred source for lyrics
      */
+    private suspend fun fetchYouTubeLyrics(song: Song): String? {
+        val videoId = song.youtubeId 
+            ?: if (song.id.startsWith("youtube_")) song.id.substringAfter("youtube_")
+               else if (song.contentUriString?.startsWith("youtube://") == true) song.contentUriString.substringAfter("youtube://")
+               else return null
+
+        return try {
+            val watchEndpoint = unshoo.ianshulyadav.pixelmusic.innertube.models.WatchEndpoint(videoId = videoId)
+            val nextResult = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.next(watchEndpoint).getOrNull()
+            val lyricsEndpoint = nextResult?.lyricsEndpoint
+            
+            var rawLyrics: String? = null
+            if (lyricsEndpoint != null) {
+                rawLyrics = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.lyrics(lyricsEndpoint).getOrNull()
+            }
+            
+            if (rawLyrics == null) {
+                rawLyrics = unshoo.ianshulyadav.pixelmusic.innertube.YouTube.transcript(videoId).getOrNull()
+            }
+            
+            rawLyrics
+        } catch (e: Exception) {
+            timber.log.Timber.e(e, "Failed to fetch YouTube lyrics for $videoId")
+            null
+        }
+    }
+
     fun loadLyricsForSong(song: Song, sourcePreference: LyricsSourcePreference) {
         loadingJob?.cancel()
         val targetSongId = song.id
@@ -113,10 +140,15 @@ class LyricsStateHolder @Inject constructor(
 
             val fetchedLyrics = try {
                 withContext(Dispatchers.IO) {
-                    musicRepository.getLyrics(
-                        song = song,
-                        sourcePreference = sourcePreference
-                    )
+                    val ytLyrics = fetchYouTubeLyrics(song)
+                    if (ytLyrics != null) {
+                        LyricsUtils.parseLyrics(ytLyrics)
+                    } else {
+                        musicRepository.getLyrics(
+                            song = song,
+                            sourcePreference = sourcePreference
+                        )
+                    }
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -189,6 +221,19 @@ class LyricsStateHolder @Inject constructor(
                     _searchUiState.value = LyricsSearchUiState.Success(lyrics)
                     _songUpdates.emit(song.withPersistedLyrics(rawLyrics, refreshedAlbumArtUri = null) to lyrics)
                     _messageEvents.emit(contextHelper(R.string.lyrics_already_available))
+                    return@launch
+                }
+            }
+
+            // Check YouTube lyrics first if available
+            val ytLyricsRaw = withContext(Dispatchers.IO) { fetchYouTubeLyrics(song) }
+            if (ytLyricsRaw != null) {
+                val parsed = LyricsUtils.parseLyrics(ytLyricsRaw)
+                if (hasValidLyrics(parsed)) {
+                    _searchUiState.value = LyricsSearchUiState.Success(parsed)
+                    val refreshedAlbumArtUri = persistLyricsToFileMetadataIfPossible(song, ytLyricsRaw)
+                    val updatedSong = song.withPersistedLyrics(ytLyricsRaw, refreshedAlbumArtUri)
+                    _songUpdates.emit(updatedSong to parsed)
                     return@launch
                 }
             }

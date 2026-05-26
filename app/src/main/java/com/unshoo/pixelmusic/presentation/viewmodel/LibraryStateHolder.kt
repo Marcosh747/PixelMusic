@@ -6,14 +6,18 @@ import com.unshoo.pixelmusic.data.model.MusicFolder
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.model.SortOption
 import com.unshoo.pixelmusic.data.preferences.UserPreferencesRepository
+import com.unshoo.pixelmusic.data.repository.MusicRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -29,7 +33,8 @@ private const val ENABLE_FOLDERS_STORAGE_FILTER = false
  */
 @Singleton
 class LibraryStateHolder @Inject constructor(
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val musicRepository: MusicRepository
 ) {
 
     // --- State (always empty — local library removed) ---
@@ -82,10 +87,20 @@ class LibraryStateHolder @Inject constructor(
     val artistsPagingFlow: Flow<androidx.paging.PagingData<Artist>> =
         flowOf(androidx.paging.PagingData.empty())
 
-    val favoritesPagingFlow: Flow<androidx.paging.PagingData<Song>> =
-        flowOf(androidx.paging.PagingData.empty())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val favoritesPagingFlow: Flow<androidx.paging.PagingData<Song>> = combine(
+        _currentFavoriteSortOption,
+        _currentStorageFilter
+    ) { sortOption, storageFilter ->
+        sortOption to storageFilter
+    }.flatMapLatest { (sortOption, storageFilter) ->
+        musicRepository.getPaginatedFavoriteSongs(sortOption, storageFilter)
+    }
 
-    val favoriteSongCountFlow: Flow<Int> = flowOf(0)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val favoriteSongCountFlow: Flow<Int> = _currentStorageFilter.flatMapLatest { storageFilter ->
+        musicRepository.getFavoriteSongCountFlow(storageFilter)
+    }
 
     val genres: Flow<ImmutableList<com.unshoo.pixelmusic.data.model.Genre>> =
         flowOf(persistentListOf())

@@ -346,13 +346,21 @@ class MusicService : MediaLibraryService() {
             ?.getLong(MediaItemBuilder.EXTERNAL_EXTRA_DURATION, 0L)
             ?: 0L
 
+        val title = mediaItem.mediaMetadata.title?.toString()
+        val artist = mediaItem.mediaMetadata.artist?.toString()
+        val thumbnail = mediaItem.mediaMetadata.artworkUri?.toString()
+            ?: mediaItem.mediaMetadata.extras?.getString(MediaItemBuilder.EXTERNAL_EXTRA_ALBUM_ART)
+
         if (forceNewSession) {
             listeningStatsTracker.onTrackChanged(
                 songId = songId,
                 positionMs = positionMs,
                 durationMs = durationMs,
                 fallbackDurationMs = fallbackDurationMs,
-                isPlaying = player.isPlaying
+                isPlaying = player.isPlaying,
+                title = title,
+                artist = artist,
+                thumbnail = thumbnail
             )
         } else {
             listeningStatsTracker.ensureSession(
@@ -360,7 +368,10 @@ class MusicService : MediaLibraryService() {
                 positionMs = positionMs,
                 durationMs = durationMs,
                 fallbackDurationMs = fallbackDurationMs,
-                isPlaying = player.isPlaying
+                isPlaying = player.isPlaying,
+                title = title,
+                artist = artist,
+                thumbnail = thumbnail
             )
         }
     }
