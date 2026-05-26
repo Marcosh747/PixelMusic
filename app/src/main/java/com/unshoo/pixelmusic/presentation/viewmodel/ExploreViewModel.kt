@@ -7,38 +7,46 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import unshoo.ianshulyadav.pixelmusic.innertube.YouTube
+import unshoo.ianshulyadav.pixelmusic.innertube.models.AlbumItem
 import unshoo.ianshulyadav.pixelmusic.innertube.pages.ExplorePage
 import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
 import unshoo.ianshulyadav.pixelmusic.innertube.pages.ChartsPage
 import javax.inject.Inject
 
-sealed interface ExploreUiState {
-    object Loading : ExploreUiState
-    data class Success(
-        val homePage: HomePage?,
-        val explorePage: ExplorePage?,
-        val chartsPage: ChartsPage?
-    ) : ExploreUiState
-    data class Error(val message: String) : ExploreUiState
-}
+data class ExploreUiState(
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
+    val isContinuationLoading: Boolean = false,
+    val homePageSections: List<HomePage.Section> = emptyList(),
+    val homePageContinuation: String? = null,
+    val newReleaseAlbums: List<AlbumItem> = emptyList(),
+    val chartsPage: ChartsPage? = null,
+    val error: String? = null,
+    val selectedFilter: String = "All"
+)
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor() : ViewModel() {
 
-    private val _uiState = MutableStateFlow<ExploreUiState>(ExploreUiState.Loading)
+    private val _uiState = MutableStateFlow(ExploreUiState())
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
 
     init {
         loadData()
     }
 
-    fun loadData() {
+    fun loadData(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.value = ExploreUiState.Loading
+            if (forceRefresh) {
+                _uiState.update { it.copy(isRefreshing = true, error = null) }
+            } else {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            }
             try {
                 val data = withContext(Dispatchers.IO) {
                     val home = YouTube.home().getOrNull()
@@ -47,19 +55,73 @@ class ExploreViewModel @Inject constructor() : ViewModel() {
                     Triple(home, explore, charts)
                 }
 
-                if (data.first == null && data.second == null && data.third == null) {
-                    _uiState.value = ExploreUiState.Error("Failed to fetch explore data from YouTube Music. Please check your connection.")
+                val home = data.first
+                val explore = data.second
+                val charts = data.third
+
+                if (home == null && explore == null && charts == null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            error = "Failed to fetch explore data from YouTube Music. Please check your connection."
+                        )
+                    }
                 } else {
-                    _uiState.value = ExploreUiState.Success(
-                        homePage = data.first,
-                        explorePage = data.second,
-                        chartsPage = data.third
-                    )
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            homePageSections = home?.sections ?: emptyList(),
+                            homePageContinuation = home?.continuation,
+                            newReleaseAlbums = explore?.newReleaseAlbums ?: emptyList(),
+                            chartsPage = charts
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error loading Explore screen data")
-                _uiState.value = ExploreUiState.Error(e.localizedMessage ?: "Unknown error occurred")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = e.localizedMessage ?: "Unknown error occurred"
+                    )
+                }
             }
         }
+    }
+
+    fun loadMore() {
+        val currentState = _uiState.value
+        val continuation = currentState.homePageContinuation
+        if (currentState.isContinuationLoading || continuation == null) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isContinuationLoading = true) }
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    YouTube.home(continuation = continuation).getOrNull()
+                }
+                if (result != null) {
+                    _uiState.update {
+                        it.copy(
+                            isContinuationLoading = false,
+                            homePageSections = it.homePageSections + result.sections,
+                            homePageContinuation = result.continuation
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isContinuationLoading = false) }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error loading more Explore screen sections")
+                _uiState.update { it.copy(isContinuationLoading = false) }
+            }
+        }
+    }
+
+    fun setSelectedFilter(filter: String) {
+        _uiState.update { it.copy(selectedFilter = filter) }
     }
 }

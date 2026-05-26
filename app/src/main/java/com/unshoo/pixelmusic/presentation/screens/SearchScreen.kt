@@ -80,8 +80,6 @@ import com.unshoo.pixelmusic.presentation.components.SmartImage
 import com.unshoo.pixelmusic.presentation.components.SmartImageListTargetSize
 import com.unshoo.pixelmusic.presentation.components.SongInfoBottomSheet
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
-import com.unshoo.pixelmusic.presentation.viewmodel.MoodAndGenresViewModel
-import com.unshoo.pixelmusic.presentation.components.MoodAndGenresSection
 import android.util.Log
 import com.unshoo.pixelmusic.ui.theme.LocalPixelMusicDarkTheme
 import androidx.compose.material.icons.rounded.DeleteForever
@@ -114,7 +112,6 @@ import com.unshoo.pixelmusic.presentation.components.PlaylistCover
 import com.unshoo.pixelmusic.presentation.components.resolveMainScreenBottomGradientHeight
 import com.unshoo.pixelmusic.presentation.components.resolveNavBarOccupiedHeight
 import com.unshoo.pixelmusic.presentation.navigation.Screen
-import com.unshoo.pixelmusic.presentation.screens.search.components.GenreCategoriesGrid
 import com.unshoo.pixelmusic.presentation.viewmodel.PlaylistViewModel
 import com.unshoo.pixelmusic.utils.formatSongCount
 import kotlinx.collections.immutable.ImmutableList
@@ -132,7 +129,8 @@ import androidx.compose.ui.res.stringResource
 
 private data class SearchUiSlice(
     val selectedSearchFilter: SearchFilterType = SearchFilterType.ALL,
-    val searchResults: ImmutableList<SearchResultItem> = persistentListOf()
+    val searchResults: ImmutableList<SearchResultItem> = persistentListOf(),
+    val searchHistory: ImmutableList<SearchHistoryItem> = persistentListOf()
 )
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -142,7 +140,6 @@ fun SearchScreen(
     paddingValues: PaddingValues,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     playlistViewModel: PlaylistViewModel = hiltViewModel(),
-    moodAndGenresViewModel: MoodAndGenresViewModel = hiltViewModel(),
     navController: NavHostController,
     onSearchBarActiveChange: (Boolean) -> Unit = {}
 ) {
@@ -160,7 +157,8 @@ fun SearchScreen(
             .map { uiState ->
                 SearchUiSlice(
                     selectedSearchFilter = uiState.selectedSearchFilter,
-                    searchResults = uiState.searchResults
+                    searchResults = uiState.searchResults,
+                    searchHistory = uiState.searchHistory
                 )
             }
             .distinctUntilChanged()
@@ -170,7 +168,6 @@ fun SearchScreen(
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val favoriteSongIds by playerViewModel.favoriteSongIds.collectAsStateWithLifecycle()
     val selectedSongForInfo by playerViewModel.selectedSongForInfo.collectAsStateWithLifecycle()
-    val moodAndGenres by moodAndGenresViewModel.moodAndGenres.collectAsStateWithLifecycle()
     var showSongInfoBottomSheet by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val searchInputFocusRequester = remember { FocusRequester() }
@@ -181,6 +178,7 @@ fun SearchScreen(
         onSearchBarActiveChange(false)
         searchQuery = ""
         playerViewModel.performSearch("")
+        playerViewModel.loadSearchHistory()
     }
 
 
@@ -371,38 +369,25 @@ fun SearchScreen(
                 label = "search_mode_transition"
             ) { isGenreMode ->
                 if (isGenreMode) {
-                    androidx.compose.foundation.lazy.LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = bottomBarHeightDp + MiniPlayerHeight + 24.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = bottomBarHeightDp + MiniPlayerHeight + 24.dp)
                     ) {
-                        // YouTube Moods & Genres section
-                        val moodItems = moodAndGenres
-                        if (moodItems != null && moodItems.isNotEmpty()) {
-                            item(key = "mood_genres_header") {
-                                androidx.compose.material3.Text(
-                                    text = "Moods & Genres",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                    modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp)
-                                )
+                        SearchHistoryList(
+                            historyItems = searchUiState.searchHistory,
+                            onHistoryClick = { query ->
+                                searchQuery = query
+                                playerViewModel.performSearch(query)
+                            },
+                            onHistoryDelete = { query ->
+                                playerViewModel.deleteSearchHistoryItem(query)
+                            },
+                            onClearAllHistory = {
+                                playerViewModel.clearSearchHistory()
                             }
-                            item(key = "mood_genres_grid") {
-                                MoodAndGenresSection(
-                                    items = moodItems,
-                                    onItemClick = { moodItem ->
-                                        val browseId = moodItem.endpoint?.browseId ?: return@MoodAndGenresSection
-                                        val params = moodItem.endpoint.params
-                                        // Navigate to GenreDetail using browseId as a unique key
-                                        navController.navigateSafely(
-                                            Screen.GenreDetail.createRoute(
-                                                java.net.URLEncoder.encode(browseId + (if (params != null) "?p=$params" else ""), "UTF-8")
-                                            )
-                                        )
-                                    }
-                                )
-                            }
-                        }
-
+                        )
                     }
                 } else {
                     Column(
@@ -523,12 +508,7 @@ fun SearchScreen(
                     )
                     showSongInfoBottomSheet = false
                 },
-                onNavigateToGenre = {
-                    currentSong.genre?.let {
-                        navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                    }
-                    showSongInfoBottomSheet = false
-                },
+                onNavigateToGenre = {},
                 onEditSong = { newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                     playerViewModel.editSongMetadata(
                         currentSong,

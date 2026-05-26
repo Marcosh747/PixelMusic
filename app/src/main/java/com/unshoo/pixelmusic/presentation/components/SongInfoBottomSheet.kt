@@ -103,7 +103,7 @@ fun SongInfoBottomSheet(
     onNavigateToAlbum: () -> Unit,
     onNavigateToArtist: () -> Unit,
     onNavigateToArtistById: (String) -> Unit = { _ -> onNavigateToArtist() },
-    onNavigateToGenre: () -> Unit,
+    onNavigateToGenre: () -> Unit = {},
     onEditSong: (
         title: String,
         artist: String,
@@ -823,7 +823,6 @@ fun SongInfoBottomSheet(
                                                         icon = Icons.Rounded.MusicNote,
                                                         iconDescription = stringResource(R.string.cd_genre_icon),
                                                         shape = infoSegmentItemShape,
-                                                        onClick = onNavigateToGenre,
                                                     )
                                                 }
 

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.unshoo.pixelmusic.presentation.screens
 
 import androidx.compose.animation.AnimatedVisibility
@@ -8,8 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,18 +38,18 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,7 +70,6 @@ import com.unshoo.pixelmusic.R
 import com.unshoo.pixelmusic.data.model.Song
 import com.unshoo.pixelmusic.data.remote.youtube.toNativeSong
 import com.unshoo.pixelmusic.presentation.components.MiniPlayerHeight
-import com.unshoo.pixelmusic.presentation.components.MoodAndGenresSection
 import com.unshoo.pixelmusic.presentation.components.SmartImage
 import com.unshoo.pixelmusic.presentation.components.subcomps.EnhancedSongListItem
 import com.unshoo.pixelmusic.presentation.navigation.Screen
@@ -81,17 +79,15 @@ import com.unshoo.pixelmusic.presentation.viewmodel.ExploreUiState
 import com.unshoo.pixelmusic.presentation.viewmodel.ExploreViewModel
 import com.unshoo.pixelmusic.presentation.viewmodel.PlayerViewModel
 import com.unshoo.pixelmusic.ui.theme.GoogleSansRounded
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import unshoo.ianshulyadav.pixelmusic.innertube.models.AlbumItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.ArtistItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.PlaylistItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.SongItem
 import unshoo.ianshulyadav.pixelmusic.innertube.models.YTItem
+import unshoo.ianshulyadav.pixelmusic.innertube.pages.HomePage
 
 @UnstableApi
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     navController: NavController,
@@ -103,10 +99,6 @@ fun ExploreScreen(
     val stablePlayerState by playerViewModel.stablePlayerState.collectAsStateWithLifecycle()
     val isPlaying by remember(stablePlayerState) { mutableStateOf(stablePlayerState.isPlaying) }
     val currentSongId = stablePlayerState.currentSong?.id
-
-    var selectedTab by remember { mutableStateOf("All") }
-    var isRefreshing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val pullRefreshState = rememberPullToRefreshState()
 
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -133,14 +125,9 @@ fun ExploreScreen(
         }
     ) { innerPadding ->
         PullToRefreshBox(
-            isRefreshing = isRefreshing,
+            isRefreshing = uiState.isRefreshing,
             onRefresh = {
-                isRefreshing = true
-                exploreViewModel.loadData()
-                scope.launch {
-                    delay(1500)
-                    isRefreshing = false
-                }
+                exploreViewModel.loadData(forceRefresh = true)
             },
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize()
@@ -150,207 +137,305 @@ fun ExploreScreen(
                     .fillMaxSize()
                     .background(backgroundBrush)
             ) {
-                when (val state = uiState) {
-                    is ExploreUiState.Loading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                if (uiState.isLoading && uiState.homePageSections.isEmpty() && uiState.newReleaseAlbums.isEmpty() && uiState.chartsPage == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                } else if (uiState.error != null && uiState.homePageSections.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = uiState.error!!,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Button(
+                            onClick = { exploreViewModel.loadData() },
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Rounded.Refresh, contentDescription = "Retry")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Retry")
                         }
                     }
-                    is ExploreUiState.Error -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = state.message,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            Button(
-                                onClick = { exploreViewModel.loadData() },
-                                shape = RoundedCornerShape(12.dp)
+                } else {
+                    val bottomPadding = if (currentSongId != null) MiniPlayerHeight else 0.dp
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            top = innerPadding.calculateTopPadding(),
+                            bottom = paddingValuesParent.calculateBottomPadding() + 24.dp + bottomPadding
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        // Category Filter Chips
+                        item(key = "explore_filters") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Rounded.Refresh, contentDescription = "Retry")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Retry")
+                                val categories = listOf("All", "For You", "New Releases", "Charts")
+                                categories.forEach { category ->
+                                    FilterChip(
+                                        selected = uiState.selectedFilter == category,
+                                        onClick = { exploreViewModel.setSelectedFilter(category) },
+                                        label = { Text(category) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            labelColor = MaterialTheme.colorScheme.onSurface
+                                        ),
+                                        shape = RoundedCornerShape(16.dp),
+                                        border = null
+                                    )
+                                }
                             }
                         }
-                    }
-                    is ExploreUiState.Success -> {
-                        val bottomPadding = if (currentSongId != null) MiniPlayerHeight else 0.dp
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = paddingValuesParent.calculateBottomPadding() + 24.dp + bottomPadding
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(24.dp)
+
+                        // 1) "For You" / Homepage content (includes albums, songs, playlists, artists)
+                        if (uiState.selectedFilter == "All" || uiState.selectedFilter == "For You") {
+                            uiState.homePageSections.forEach { section ->
+                                item(key = "home_section_${section.title}_header") {
+                                    SectionHeader(title = section.title)
+                                }
+                                item(key = "home_section_${section.title}_carousel") {
+                                    YTItemCarousel(
+                                        items = section.items,
+                                        navController = navController,
+                                        playerViewModel = playerViewModel,
+                                        sectionTitle = section.title
+                                    )
+                                }
+                            }
+
+                            // Load More Continuation Trigger
+                            if (uiState.homePageContinuation != null) {
+                                item(key = "load_more_trigger") {
+                                    LaunchedEffect(Unit) {
+                                        exploreViewModel.loadMore()
+                                    }
+                                    if (uiState.isContinuationLoading) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2) New Releases Section
+                        if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "New Releases") &&
+                            uiState.newReleaseAlbums.isNotEmpty()
                         ) {
-                            // Category Filter Chips
-                            item(key = "explore_filters") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState())
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            item(key = "new_releases_header") {
+                                SectionHeader(title = "New Releases")
+                            }
+                            item(key = "new_releases_carousel") {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    val categories = listOf("All", "New Releases", "Charts", "Moods & Genres")
-                                    categories.forEach { category ->
-                                        FilterChip(
-                                            selected = selectedTab == category,
-                                            onClick = { selectedTab = category },
-                                            label = { Text(category) },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                                labelColor = MaterialTheme.colorScheme.onSurface
-                                            ),
-                                            shape = RoundedCornerShape(16.dp),
-                                            border = null
+                                    items(uiState.newReleaseAlbums) { album ->
+                                        AlbumCarouselItem(
+                                            album = album,
+                                            onClick = {
+                                                navController.navigateSafely(Screen.AlbumDetail.createRoute(album.browseId))
+                                            }
                                         )
                                     }
                                 }
                             }
+                        }
 
-                            // 1) New Releases Section
-                            if ((selectedTab == "All" || selectedTab == "New Releases") &&
-                                state.explorePage != null && state.explorePage.newReleaseAlbums.isNotEmpty()
-                            ) {
-                                item(key = "new_releases_header") {
-                                    SectionHeader(title = "New Releases")
+                        // 3) Charts Sections
+                        if ((uiState.selectedFilter == "All" || uiState.selectedFilter == "Charts") &&
+                            uiState.chartsPage != null && uiState.chartsPage!!.sections.isNotEmpty()
+                        ) {
+                            uiState.chartsPage!!.sections.forEach { chartSection ->
+                                item(key = "chart_${chartSection.title}_header") {
+                                    SectionHeader(title = chartSection.title)
                                 }
-                                item(key = "new_releases_carousel") {
-                                    LazyRow(
-                                        contentPadding = PaddingValues(horizontal = 16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        items(state.explorePage.newReleaseAlbums) { album ->
-                                            AlbumCarouselItem(
-                                                album = album,
-                                                onClick = {
-                                                    navController.navigateSafelyReplacing(
-                                                        route = Screen.AlbumDetail.createRoute(album.browseId),
-                                                        patternToPop = Screen.AlbumDetail.route
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
 
-                            // 2) Charts Sections
-                            if ((selectedTab == "All" || selectedTab == "Charts") &&
-                                state.chartsPage != null && state.chartsPage.sections.isNotEmpty()
-                            ) {
-                                state.chartsPage.sections.forEach { chartSection ->
-                                    item(key = "chart_${chartSection.title}_header") {
-                                        SectionHeader(title = chartSection.title)
+                                val songItems = chartSection.items.filterIsInstance<SongItem>()
+                                if (songItems.isNotEmpty()) {
+                                    val songListNative = songItems.map { it.toNativeSong() }
+                                    items(songItems.size) { index ->
+                                        val songItem = songItems[index]
+                                        val songNative = songListNative[index]
+                                        EnhancedSongListItem(
+                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                            song = songNative,
+                                            isPlaying = isPlaying && currentSongId == songNative.id,
+                                            isCurrentSong = currentSongId == songNative.id,
+                                            onClick = {
+                                                playerViewModel.showAndPlaySong(
+                                                    songNative,
+                                                    songListNative,
+                                                    chartSection.title
+                                                )
+                                            },
+                                            onMoreOptionsClick = {
+                                                playerViewModel.selectSongForInfo(songNative)
+                                            }
+                                        )
                                     }
-
-                                    val songItems = chartSection.items.filterIsInstance<SongItem>()
-                                    if (songItems.isNotEmpty()) {
-                                        val songListNative = songItems.map { it.toNativeSong() }
-                                        items(songItems.size) { index ->
-                                            val songItem = songItems[index]
-                                            val songNative = songListNative[index]
-                                            EnhancedSongListItem(
-                                                modifier = Modifier.padding(horizontal = 16.dp),
-                                                song = songNative,
-                                                isPlaying = isPlaying && currentSongId == songNative.id,
-                                                isCurrentSong = currentSongId == songNative.id,
-                                                onClick = {
-                                                    playerViewModel.showAndPlaySong(
-                                                        songNative,
-                                                        songListNative,
-                                                        chartSection.title
-                                                    )
-                                                },
-                                                onMoreOptionsClick = {
-                                                    playerViewModel.selectSongForInfo(songNative)
-                                                    // In a real app we might open the info sheet, but we have showAndPlaySong wired.
-                                                }
-                                            )
-                                        }
-                                    } else {
-                                        // Fallback rendering for generic non-song chart items (like artists or playlists)
-                                        item(key = "chart_${chartSection.title}_list") {
-                                            LazyRow(
-                                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                            ) {
-                                                items(chartSection.items) { item ->
-                                                    when (item) {
-                                                        is AlbumItem -> {
-                                                            AlbumCarouselItem(
-                                                                album = item,
-                                                                onClick = {
-                                                                    navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId))
-                                                                }
-                                                            )
-                                                        }
-                                                        is ArtistItem -> {
-                                                            ArtistCardItem(
-                                                                artist = item,
-                                                                onClick = {
-                                                                    navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id))
-                                                                }
-                                                            )
-                                                        }
-                                                        is PlaylistItem -> {
-                                                            PlaylistCardItem(
-                                                                playlist = item,
-                                                                onClick = {
-                                                                    navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id))
-                                                                }
-                                                            )
-                                                        }
-                                                        else -> {}
+                                } else {
+                                    item(key = "chart_${chartSection.title}_list") {
+                                        LazyRow(
+                                            contentPadding = PaddingValues(horizontal = 16.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            items(chartSection.items) { item ->
+                                                when (item) {
+                                                    is AlbumItem -> {
+                                                        AlbumCarouselItem(
+                                                            album = item,
+                                                            onClick = {
+                                                                navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId))
+                                                            }
+                                                        )
                                                     }
+                                                    is ArtistItem -> {
+                                                        ArtistCardItem(
+                                                            artist = item,
+                                                            onClick = {
+                                                                navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id))
+                                                            }
+                                                        )
+                                                    }
+                                                    is PlaylistItem -> {
+                                                        PlaylistCardItem(
+                                                            playlist = item,
+                                                            onClick = {
+                                                                navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id))
+                                                            }
+                                                        )
+                                                    }
+                                                    else -> {}
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
-
-                            // 3) Moods & Genres Section
-                            if ((selectedTab == "All" || selectedTab == "Moods & Genres") &&
-                                state.explorePage != null && state.explorePage.moodAndGenres.isNotEmpty()
-                            ) {
-                                item(key = "mood_genres_header") {
-                                    SectionHeader(title = "Moods & Genres")
-                                }
-                                item(key = "mood_genres_grid") {
-                                    MoodAndGenresSection(
-                                        items = state.explorePage.moodAndGenres,
-                                        onItemClick = { moodItem ->
-                                            val browseId = moodItem.endpoint.browseId
-                                            val params = moodItem.endpoint.params
-                                            val route = Screen.GenreDetail.createRoute(
-                                                java.net.URLEncoder.encode(
-                                                    browseId + (if (params != null) "?p=$params" else ""),
-                                                    "UTF-8"
-                                                )
-                                            )
-                                            navController.navigateSafely(route)
-                                        }
-                                    )
-                                }
-                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun YTItemCarousel(
+    items: List<YTItem>,
+    navController: NavController,
+    playerViewModel: PlayerViewModel,
+    sectionTitle: String
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(items) { item ->
+            when (item) {
+                is SongItem -> {
+                    val songNative = item.toNativeSong()
+                    SongCardItem(
+                        song = songNative,
+                        onClick = {
+                            playerViewModel.showAndPlaySong(
+                                song = songNative,
+                                contextSongs = items.filterIsInstance<SongItem>().map { it.toNativeSong() },
+                                queueName = sectionTitle
+                            )
+                        }
+                    )
+                }
+                is AlbumItem -> {
+                    AlbumCarouselItem(
+                        album = item,
+                        onClick = {
+                            navController.navigateSafely(Screen.AlbumDetail.createRoute(item.browseId))
+                        }
+                    )
+                }
+                is PlaylistItem -> {
+                    PlaylistCardItem(
+                        playlist = item,
+                        onClick = {
+                            navController.navigateSafely(Screen.PlaylistDetail.createRoute(item.id))
+                        }
+                    )
+                }
+                is ArtistItem -> {
+                    ArtistCardItem(
+                        artist = item,
+                        onClick = {
+                            navController.navigateSafely(Screen.ArtistDetail.createRoute(item.id))
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SongCardItem(
+    song: Song,
+    onClick: () -> Unit
+) {
+    val shape = remember { AbsoluteSmoothCornerShape(20.dp, 60) }
+    Card(
+        modifier = Modifier
+            .width(140.dp)
+            .clickable(onClick = onClick),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Column {
+            SmartImage(
+                model = song.albumArtUriString,
+                contentDescription = song.title,
+                modifier = Modifier
+                    .size(140.dp)
+                    .clip(shape),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = song.artist,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

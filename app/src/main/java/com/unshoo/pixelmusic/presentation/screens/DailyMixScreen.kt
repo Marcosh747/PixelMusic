@@ -212,12 +212,7 @@ fun DailyMixScreen(
                 navController.navigateSafely(Screen.ArtistDetail.createRoute(artistId))
                 showSongInfoSheet = false
             },
-            onNavigateToGenre = {
-                song.genre?.let {
-                    navController.navigateSafely(Screen.GenreDetail.createRoute(java.net.URLEncoder.encode(it, "UTF-8")))
-                }
-                showSongInfoSheet = false
-            },
+            onNavigateToGenre = {},
             onEditSong = { newTitle, newArtist, newAlbum, newAlbumArtist, newComposer, newGenre, newLyrics, newTrackNumber, newDiscNumber, replayGainTrackGainDb, replayGainAlbumGainDb, coverArtUpdate ->
                 playerViewModel.editSongMetadata(
                     song,

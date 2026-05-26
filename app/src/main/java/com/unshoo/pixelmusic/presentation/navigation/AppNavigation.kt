@@ -41,7 +41,6 @@ import com.unshoo.pixelmusic.presentation.screens.DailyMixScreen
 import com.unshoo.pixelmusic.presentation.screens.EditTransitionScreen
 import com.unshoo.pixelmusic.presentation.screens.EasterEggScreen
 import com.unshoo.pixelmusic.presentation.screens.ExperimentalSettingsScreen
-import com.unshoo.pixelmusic.presentation.screens.GenreDetailScreen
 import com.unshoo.pixelmusic.presentation.screens.HomeScreen
 import com.unshoo.pixelmusic.presentation.screens.ExploreScreen
 import com.unshoo.pixelmusic.presentation.screens.LibraryScreen
@@ -413,27 +412,7 @@ fun AppNavigation(
                     MashupScreen()
                 }
             }
-            composable(
-                route = Screen.GenreDetail.route,
-                arguments = listOf(navArgument("genreId") { type = NavType.StringType }),
-                enterTransition = { enterTransition() },
-                exitTransition = { exitTransition() },
-                popEnterTransition = { popEnterTransition() },
-                popExitTransition = { popExitTransition() },
-            ) { backStackEntry ->
-                val genreId = backStackEntry.arguments?.getString("genreId")
-                if (genreId != null) {
-                    ScreenWrapper(navController = navController, playerViewModel = playerViewModel) {
-                        GenreDetailScreen(
-                            navController = navController,
-                            genreId = genreId,
-                            playerViewModel = playerViewModel
-                        )
-                    }
-                } else {
-                    Text(stringResource(R.string.nav_error_genre_id_missing), modifier = Modifier)
-                }
-            }
+
             composable(
                 route = Screen.AlbumDetail.route,
                 arguments = listOf(navArgument("albumId") { type = NavType.StringType }),

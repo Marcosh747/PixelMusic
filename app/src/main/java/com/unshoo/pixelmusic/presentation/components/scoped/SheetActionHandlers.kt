@@ -106,22 +106,8 @@ internal fun rememberSheetActionHandlers(
             }
         }
     }
-    val onNavigateToGenre = remember(scope, navController) {
-        { song: Song ->
-            scope.launch {
-                sheetMotionControllerState.value.snapCollapsed(sheetCollapsedTargetYState.value)
-            }
-            playerViewModelState.value.collapsePlayerSheet()
-            queueSheetControllerState.value.animate(false)
-            sheetModalOverlayControllerState.value.updateSelectedSongForInfo(null)
-            if (!song.genre.isNullOrEmpty()) {
-                val encodedGenre = java.net.URLEncoder.encode(song.genre, "UTF-8")
-                navController.navigateSafelyReplacing(
-                    route = Screen.GenreDetail.createRoute(encodedGenre),
-                    patternToPop = Screen.GenreDetail.route
-                )
-            }
-        }
+    val onNavigateToGenre = remember {
+        { _: Song -> }
     }
 
     return SheetActionHandlers(

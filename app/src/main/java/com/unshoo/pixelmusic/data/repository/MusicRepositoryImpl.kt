@@ -58,7 +58,6 @@ import com.unshoo.pixelmusic.data.model.FolderSource
 import com.unshoo.pixelmusic.data.model.StorageFilter
 import com.unshoo.pixelmusic.data.preferences.PlaylistPreferencesRepository
 import com.unshoo.pixelmusic.data.preferences.UserPreferencesRepository
-import com.unshoo.pixelmusic.ui.theme.GenreThemeUtils
 import com.unshoo.pixelmusic.utils.DirectoryFilterUtils
 import com.unshoo.pixelmusic.utils.LogUtils
 import com.unshoo.pixelmusic.utils.StorageType
@@ -1258,15 +1257,13 @@ class MusicRepositoryImpl @Inject constructor(
                 .replace(" ", "_")
                 .replace("/", "_")
         }
-        val lightThemeColor = GenreThemeUtils.getGenreThemeColor(id, isDark = false)
-        val darkThemeColor = GenreThemeUtils.getGenreThemeColor(id, isDark = true)
         return Genre(
             id = id,
             name = genreName,
-            lightColorHex = lightThemeColor.container.toHexString(),
-            onLightColorHex = lightThemeColor.onContainer.toHexString(),
-            darkColorHex = darkThemeColor.container.toHexString(),
-            onDarkColorHex = darkThemeColor.onContainer.toHexString()
+            lightColorHex = "#F0F0F0",
+            onLightColorHex = "#000000",
+            darkColorHex = "#1F1F1F",
+            onDarkColorHex = "#FFFFFF"
         )
     }
 

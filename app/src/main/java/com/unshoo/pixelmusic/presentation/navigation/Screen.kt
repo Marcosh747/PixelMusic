@@ -25,9 +25,6 @@ sealed class Screen(val route: String) {
     object RecentlyPlayed : Screen("recently_played")
     object QuickPicksAll : Screen("quick_picks_all")
     object Stats : Screen("stats")
-    object GenreDetail : Screen("genre_detail/{genreId}") { // New screen
-        fun createRoute(genreId: String) = "genre_detail/$genreId"
-    }
     object DJSpace : Screen("dj_space")
     // La ruta base es "album_detail". La ruta completa con el argumento se define en AppNavigation.
     object AlbumDetail : Screen("album_detail/{albumId}") {
