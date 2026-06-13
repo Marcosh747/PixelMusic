@@ -13,6 +13,7 @@ enum class AppLanguage(val tag: String, @StringRes val labelRes: Int) {
     RUSSIAN("ru", R.string.setcat_language_russian),
     CHINESE("zh-CN", R.string.setcat_language_chinese),
     INDONESIAN("in", R.string.setcat_language_indonesian),
+    PORTUGUESE("pt-BR", R.string.setcat_language_portuguese),
     ITALIAN("it", R.string.setcat_language_italian);
 
     companion object {
