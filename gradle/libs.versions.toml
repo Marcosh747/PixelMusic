@@ -2,7 +2,7 @@
 accompanistDrawablepainter = "0.37.3"
 agp = "9.2.1"
 app = "1.7.0"
-googleGenai = "1.57.0"
+googleGenai = "1.58.0"
 googlePlayServicesCast = "22.3.1"
 animation = "1.11.2"
 appcompat = "1.7.1"
@@ -43,7 +43,7 @@ media3Transformer = "1.10.1"
 mediaRouter = "1.8.1"
 navigationCompose = "2.9.8"
 paletteKtx = "1.0.0"
-protobufJavalite = "4.35.0"
+protobufJavalite = "4.35.1"
 pytorch_android = "2.1.0"
 pytorch_android_torchvision = "2.1.0"
 reorderable = "0.9.6"
@@ -129,7 +129,7 @@ androidx-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-f
 google-genai = { group = "com.google.genai", name = "google-genai", version.ref = "googleGenai" }
 google-play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "googlePlayServicesCast" }
 androidx-animation = { module = "androidx.compose.animation:animation", version.ref = "animation" }
-desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs_nio", version.ref = "desugarJdkLibs" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayoutCompose" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
