@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Música de pixels</string>
+    <string name="app_name">Pixel Music</string>
     <string name="app_name_change_title">Mudança de nome do aplicativo</string>
     <string name="app_name_change_message">Mudamos o nome do nosso aplicativo de PixelMusic para PixelMusic devido a um problema relacionado à marca registrada. Continue jogando!</string>
     <string name="do_not_show_again">Não mostre novamente</string>
@@ -26,8 +26,8 @@
     <string name="lyrics_custom_search_hint">Não foi possível encontrar as letras automaticamente. Você pode editar o título ou artista e tentar pesquisar manualmente.</string>
     <string name="failed_to_search_for_lyrics">Falha ao pesquisar a letra</string>
     <string name="failed_to_fetch_lyrics_from_remote">Falha ao buscar letras do controle remoto</string>
-    <string name="lyrics_fetch_timeout">A conexão expirou. Verifique sua conexão com a Internet.</string>
-    <string name="lyrics_network_error">Erro de rede. Verifique sua conexão com a Internet.</string>
+    <string name="lyrics_fetch_timeout">A conexão expirou. Verifique a sua conexão com a Internet.</string>
+    <string name="lyrics_network_error">Erro de rede. Verifique a sua conexão com a Internet.</string>
     <string name="lyrics_server_error">Erro do servidor (código %d). Por favor, tente novamente mais tarde.</string>
     <string name="found_n_matches_format">Encontradas %d correspondência(s)</string>
     <string name="searched_for_x_format">Pesquisado por \"%s\"</string>

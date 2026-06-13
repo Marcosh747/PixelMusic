@@ -30,7 +30,7 @@
 
     
     <string name="no_internet_dialog_title">Sem conexão com a internet</string>
-    <string name="no_internet_dialog_message">Este conteúdo requer uma conexão com a internet. Verifique suas configurações de rede e tente novamente.</string>
+    <string name="no_internet_dialog_message">Este conteúdo requer uma conexão com a internet. Verifique as suas configurações de rede e tente novamente.</string>
     <string name="offline_screen_title">Você está off-line</string>
     <string name="offline_screen_message">Verifique sua conexão com a Internet e tente acessar este conteúdo novamente.</string>
 
@@ -59,7 +59,7 @@
 
     
     <string name="edit_song_info_dialog_title">Editando metadados de músicas</string>
-    <string name="edit_song_info_dialog_body">A edição dos metadados de uma música pode afetar a forma como ela é exibida e organizada na sua biblioteca. As alterações são permanentes e podem não ser reversíveis.</string>
+    <string name="edit_song_info_dialog_body">A edição dos metadados de uma música pode afetar como ela é exibida e organizada na sua biblioteca. As alterações são permanentes e podem não ser reversíveis.</string>
     <string name="edit_song_got_it">Entendi</string>
     <string name="cd_info_icon">Informação</string>
     <string name="edit_song_toolbar_title">Editar música</string>

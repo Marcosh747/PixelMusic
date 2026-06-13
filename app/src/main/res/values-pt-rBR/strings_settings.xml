@@ -8,7 +8,7 @@
     
     <string name="settings_category_library_title">Gerenciamento Musical</string>
     <string name="settings_category_library_subtitle">Gerenciar pastas, atualizar biblioteca, opções de análise</string>
-    <string name="settings_category_content_title">Contente</string>
+    <string name="settings_category_content_title">Conteúdo</string>
     <string name="settings_category_content_subtitle">País do conteúdo, idioma, filtros e fontes de sugestões</string>
     <string name="settings_content_language_title">Idioma do conteúdo</string>
     <string name="settings_content_language_desc">Defina o idioma preferido do conteúdo do YouTube Music</string>
@@ -30,7 +30,7 @@
     <string name="settings_category_appearance_subtitle">Temas, layout e estilos visuais</string>
     <string name="settings_category_playback_title">Reprodução</string>
     <string name="settings_category_playback_subtitle">Comportamento de áudio, crossfade e reprodução em segundo plano</string>
-    <string name="settings_category_behavior_title">Comportamento</string>
+    <string name="settings_category_behavior_title">Gestos</string>
     <string name="settings_category_behavior_subtitle">Gestos, sensação tátil e comportamento de navegação</string>
     <string name="settings_category_ai_title">Integração de IA (b)</string>
     <string name="settings_category_ai_subtitle">Provedores de IA, chaves de API e configurações de modelo</string>
@@ -152,7 +152,7 @@
     <string name="setcat_app_navigation_section">Navegação de aplicativos</string>
     <string name="setcat_default_tab_label">Guia Padrão</string>
     <string name="setcat_default_tab_desc">Escolha a guia de inicialização padrão.</string>
-    <string name="tab_home">Lar</string>
+    <string name="tab_home">Início</string>
     <string name="tab_explore">Explorar</string>
     <string name="setcat_library_navigation_label">Navegação na Biblioteca</string>
     <string name="setcat_library_navigation_desc">Escolha como mover-se entre as guias da Biblioteca.</string>
@@ -187,7 +187,7 @@
     <string name="setcat_hifi_mode_subtitle_supported">Saída de áudio flutuante de 32 bits. Desative se a reprodução falhar no seu dispositivo.</string>
     <string name="setcat_hifi_mode_subtitle_unsupported">Não compatível com este dispositivo (PCM_FLOAT AudioTrack indisponível).</string>
     <string name="setcat_persistent_shuffle_title">Embaralhamento persistente</string>
-    <string name="setcat_persistent_shuffle_subtitle">Lembre-se da configuração aleatória mesmo depois de fechar o aplicativo.</string>
+    <string name="setcat_persistent_shuffle_subtitle">Lembre-se da configuração aleatória mesmo após fechar o aplicativo.</string>
     <string name="setcat_show_queue_history_title">Mostrar histórico da fila</string>
     <string name="setcat_show_queue_history_subtitle">Mostrar músicas tocadas anteriormente na fila.</string>
 
@@ -196,7 +196,7 @@
     <string name="setcat_folder_back_gesture_title">O gesto de voltar controla as pastas</string>
     <string name="setcat_folder_back_gesture_subtitle">Na guia Pastas, o sistema navega novamente pela pilha de pastas antes de sair da Biblioteca.</string>
     <string name="setcat_player_gestures">Gestos do jogador</string>
-    <string name="setcat_tap_bg_closes_title">Toque no fundo para fechar o player</string>
+    <string name="setcat_tap_bg_closes_title">Toque no fundo, para fechar o player</string>
     <string name="setcat_tap_bg_closes_subtitle">Toque no fundo desfocado para fechar a ficha do jogador.</string>
     <string name="setcat_haptics">Tátil</string>
     <string name="setcat_haptic_feedback_title">Feedback tátil</string>
@@ -288,7 +288,7 @@
     <string name="dialog_cannot_undo">Esta ação não pode ser desfeita.</string>
     <string name="confirm">Confirmar</string>
     <string name="dialog_rebuild_database_title">Reconstruir banco de dados?</string>
-    <string name="dialog_rebuild_database_message">Isso reconstruirá completamente sua biblioteca de música do zero. Todas as letras importadas, favoritos e metadados personalizados serão perdidos. Esta ação não pode ser desfeita.</string>
+    <string name="dialog_rebuild_database_message">Isso reconstruirá completamente a sua biblioteca de música do zero. Todas as letras importadas, favoritos e metadados personalizados serão perdidos. Esta ação não pode ser desfeita.</string>
     <string name="rebuild">Reconstruir</string>
     <string name="sync_indicator_rebuilding">Reconstruindo banco de dados</string>
     <string name="toast_rebuilding_database">Reconstruindo banco de dados…</string>

@@ -143,7 +143,7 @@
     <string name="presentation_batch_f_exp_placeholders_after_collapse">Os espaços reservados aparecem após o recolhimento de %1$d%%</string>
     <string name="presentation_batch_f_exp_drag_release_bypass">O modo de liberação de arrastar ignora limites e fecha o comportamento. A troca acontece somente quando o gesto de arrastar a folha termina.</string>
     <string name="presentation_batch_f_exp_transparent_placeholders_title">Tornar os espaços reservados transparentes</string>
-    <string name="presentation_batch_f_exp_transparent_placeholders_subtitle">Os espaços reservados mantêm seu espaço de layout, mas ficam invisíveis.</string>
+    <string name="presentation_batch_f_exp_transparent_placeholders_subtitle">Os espaços reservados mantêm o seu espaço de layout, mas ficam invisíveis.</string>
     <string name="presentation_batch_f_exp_visual_quality">Qualidade Visual</string>
     <string name="presentation_batch_f_exp_album_art_resolution">Resolução da arte do álbum</string>
     <string name="presentation_batch_f_exp_screen_title">Experimental</string>
@@ -156,7 +156,7 @@
     <string name="presentation_batch_f_percent">%1$d%%</string>
     <string name="presentation_batch_f_status_bullet_step">%1$s • %2$s</string>
     <string name="presentation_batch_f_dot_space_suffix">· %1$s</string>
-    <string name="presentation_batch_f_unknown_short" />
+    <string name="presentation_batch_f_unknown_short" >\?</string>
 
     
     <string name="presentation_batch_f_telegram_login_title">Login do telegrama</string>

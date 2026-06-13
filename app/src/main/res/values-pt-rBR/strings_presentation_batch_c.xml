@@ -7,8 +7,8 @@
     <string name="library_retry">Tentar novamente</string>
 
     
-    <string name="library_no_songs_in_library_message">Nenhuma música encontrada em sua biblioteca.</string>
-    <string name="library_no_songs_rescan_hint">Tente verificar novamente sua biblioteca nas configurações se você tiver músicas em seu dispositivo.</string>
+    <string name="library_no_songs_in_library_message">Nenhuma música encontrada na sua biblioteca.</string>
+    <string name="library_no_songs_rescan_hint">Tente verificar novamente a sua biblioteca nas configurações se você tiver músicas em seu dispositivo.</string>
     <string name="cd_no_songs_in_library">Nenhuma música encontrada</string>
 
     
@@ -60,7 +60,7 @@
     <string name="lib_empty_songs_online_title">Nenhuma música na nuvem encontrada</string>
     <string name="lib_empty_songs_online_subtitle">Sincronize músicas do Telegram ou NetEase ou mude para fonte local.</string>
     <string name="lib_empty_albums_all_title">Nenhum álbum disponível</string>
-    <string name="lib_empty_albums_all_subtitle">Os álbuns aparecerão aqui assim que sua biblioteca tiver faixas agrupadas.</string>
+    <string name="lib_empty_albums_all_subtitle">Os álbuns aparecerão aqui assim que a sua biblioteca tiver faixas agrupadas.</string>
     <string name="lib_empty_albums_offline_title">Nenhum álbum local encontrado</string>
     <string name="lib_empty_albums_offline_subtitle">Músicas locais são necessárias para construir grupos de álbuns locais.</string>
     <string name="lib_empty_albums_online_title">Nenhum álbum na nuvem encontrado</string>

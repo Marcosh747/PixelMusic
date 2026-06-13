@@ -112,12 +112,14 @@
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Netease Login Activity (WIP - Commented out to prevent build errors)
         <activity
             android:name=".presentation.netease.auth.NeteaseLoginActivity"
             android:exported="false"
             android:label="Netease Login"
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
+        -->
 
         <activity
             android:name=".presentation.gdrive.auth.GDriveLoginActivity"
@@ -126,26 +128,32 @@
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- QQ Music Login Activity (WIP - Commented out to prevent build errors)
         <activity
             android:name=".presentation.qqmusic.auth.QqMusicLoginActivity"
             android:exported="false"
             android:label="QQ Music Login"
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
+        -->
 
+        <!-- Navidrome Login Activity (WIP - Commented out to prevent build errors)
         <activity
             android:name=".presentation.navidrome.auth.NavidromeLoginActivity"
             android:exported="false"
             android:label="Navidrome Login"
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
+        -->
 
+        <!-- Jellyfin Login Activity (WIP - Commented out to prevent build errors)
         <activity
             android:name=".presentation.jellyfin.auth.JellyfinLoginActivity"
             android:exported="false"
             android:label="Jellyfin Login"
             android:theme="@style/Theme.PixelMusic"
             android:windowSoftInputMode="adjustResize" />
+        -->
 
 
         <activity

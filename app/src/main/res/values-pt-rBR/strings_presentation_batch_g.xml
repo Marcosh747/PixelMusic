@@ -87,7 +87,7 @@
     <string name="presentation_batch_g_stats_avg_plays_per_track">Média de reproduções/faixas</string>
     <string name="presentation_batch_g_stats_unique_tracks">Faixas únicas</string>
     <string name="presentation_batch_g_stats_top_three_share_label">3 principais compartilhamentos</string>
-    <string name="presentation_batch_g_stats_avatar_placeholder" />
+    <string name="presentation_batch_g_stats_avatar_placeholder" >\?</string>
     <string name="presentation_batch_g_device_info_title">Informações do dispositivo</string>
     <string name="presentation_batch_g_device_supported_codecs_title">Codecs de áudio suportados</string>
     <string name="presentation_batch_g_device_section_audio_output">Saída de áudio</string>
@@ -111,7 +111,7 @@
     <string name="presentation_batch_g_device_key_sdk_version">Versão do SDK</string>
     <string name="presentation_batch_g_device_key_hardware">Hardware</string>
     <string name="device_capabilities_unknown_device">Este dispositivo</string>
-    <string name="device_capabilities_unknown_short" />
+    <string name="device_capabilities_unknown_short" >--</string>
     <string name="device_capabilities_ready_title">Pronto para reprodução</string>
     <string name="device_capabilities_review_title">A reprodução precisa de revisão</string>
     <string name="device_capabilities_metric_formats">Formatos</string>

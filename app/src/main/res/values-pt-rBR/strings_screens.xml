@@ -22,7 +22,7 @@
 
     
     <string name="delimiter_section_title">Delimitadores Atuais</string>
-    <string name="delimiter_section_subtitle">Toque em um delimitador para removê-lo. Pelo menos um delimitador é necessário.</string>
+    <string name="delimiter_section_subtitle">Toque num delimitador para removê-lo. Pelo menos um delimitador é necessário.</string>
     <string name="delimiter_add_title">Adicionar novo delimitador</string>
     <string name="delimiter_hint">por exemplo, /ou;</string>
     <string name="delimiter_defaults_title">Delimitadores padrão</string>
@@ -47,11 +47,11 @@
     <string name="setup_intro_body">Vamos preparar tudo para você.</string>
     <string name="setup_checking_backup">Verificando pacote de backup…</string>
     <string name="setup_theme_title">Tema do aplicativo</string>
-    <string name="setup_theme_subtitle">Escolha a aparência desejada antes de começar a explorar sua biblioteca.</string>
+    <string name="setup_theme_subtitle">Escolha a aparência desejada antes de começar a explorar a sua biblioteca.</string>
     <string name="setup_theme_footer">Você pode alterar isso posteriormente em Configurações &gt; Aparência &gt; Tema do aplicativo.</string>
     <string name="setup_recommended">Recomendado</string>
     <string name="setup_library_layout_title">Layout da biblioteca</string>
-    <string name="setup_library_layout_subtitle">Escolha sua maneira preferida de navegar em sua biblioteca.</string>
+    <string name="setup_library_layout_subtitle">Escolha sua maneira preferida de navegar na sua biblioteca.</string>
     <string name="setup_compact_mode">Modo Compacto</string>
     <string name="setup_library_layout_footer">Você pode alterar isso posteriormente em Configurações &gt; Aparência &gt; Navegação na biblioteca.</string>
     <string name="tab_library">Biblioteca</string>
@@ -59,7 +59,7 @@
     <string name="tab_albums">ÁLBUM</string>
     <string name="tab_artists">ARTISTAS</string>
     <string name="setup_all_set_title">Tudo pronto!</string>
-    <string name="setup_all_set_body">Você está pronto para curtir sua música.</string>
+    <string name="setup_all_set_body">Você está pronto para curtir a sua música.</string>
     <string name="setup_restore_backup_title">Restaurar backup</string>
     <string name="setup_restore_backup_subtitle">Revise o que você deseja importar antes de concluir a configuração.</string>
     <string name="setup_modules_selected_format">%1$d de %2$d módulos selecionados</string>
@@ -96,17 +96,17 @@
     <string name="setup_excluded_folders_description">Todas as pastas são verificadas por padrão. Escolha os locais que deseja ignorar ao construir sua biblioteca.</string>
     <string name="setup_choose_folders_ignore">Escolha pastas para ignorar</string>
     <string name="setup_permission_media_title">Permissão de mídia</string>
-    <string name="setup_permission_media_description">PixelMusic precisa de acesso aos seus arquivos de áudio para construir sua biblioteca de música.</string>
+    <string name="setup_permission_media_description">PixelMusic precisa de acesso aos seus arquivos de áudio para construir a sua biblioteca de música.</string>
     <string name="setup_permission_granted">Permissão concedida</string>
     <string name="setup_grant_media_permission">Conceder permissão de mídia</string>
     <string name="setup_permission_notifications_title">Notificações</string>
-    <string name="setup_permission_notifications_description">Ative notificações para controlar sua música na tela de bloqueio e na aba de notificações.</string>
+    <string name="setup_permission_notifications_description">Ative notificações para controlar a sua música na tela de bloqueio e na aba de notificações.</string>
     <string name="setup_enable_notifications">Habilitar notificações</string>
     <string name="setup_permission_alarms_title">Alarmes e lembretes</string>
     <string name="setup_permission_alarms_description">Opcional, mas recomendado se você usar o Sleep Timer e quiser que o PixelMusic pare a reprodução exatamente na hora certa.</string>
     <string name="setup_grant_permission_generic">Conceder permissão</string>
     <string name="setup_backup_have_title">Você tem um backup?</string>
-    <string name="setup_backup_have_description">Se você já possui um backup do PixelMusic, restaure-o agora e pule a maior parte da configuração restante neste dispositivo.</string>
+    <string name="setup_backup_have_description">Se você já possui um backup do PixelMusic, restaure-o agora e pule a maioria da configuração restante neste dispositivo.</string>
     <string name="setup_inspecting_backup">Inspecionando backup</string>
     <string name="setup_restoring_backup">Restaurando backup</string>
     <string name="setup_import_backup">Importar backup</string>
@@ -148,7 +148,7 @@
 
     
     <string name="crash_report_title">Ops! Algo deu errado</string>
-    <string name="crash_report_subtitle">O aplicativo travou durante sua última sessão. Ajude-nos a corrigir isso compartilhando o relatório de falha.</string>
+    <string name="crash_report_subtitle">O aplicativo travou durante a sua última sessão. Ajude-nos a corrigir isso compartilhando o relatório de falha.</string>
     <string name="crash_report_date_line">Data: %1$s</string>
     <string name="crash_report_error_label">Erro:</string>
     <string name="crash_report_stack_preview_label">Rastreamento de pilha (visualização):</string>
@@ -165,7 +165,7 @@
     <string name="cd_clear_search_query">Limpar pesquisa</string>
     <string name="recent_searches">Pesquisas recentes</string>
     <string name="clear_all">Limpar tudo</string>
-    <string name="cd_search_history_icon">História</string>
+    <string name="cd_search_history_icon">Historico</string>
     <string name="cd_delete_search_history_item">Excluir item do histórico de pesquisa</string>
     <string name="cd_no_search_results">Nenhum resultado</string>
     <string name="search_no_results_for_query">Nenhum resultado para \"%1$s\"</string>
@@ -182,7 +182,7 @@
     <string name="about_credits_description">Este aplicativo foi desenvolvido e inspirado no projeto PixelPlayer de código aberto criado por Theo Vilardo sob licença proprietária.</string>
     <string name="about_no_contributors">Nenhum contribuidor encontrado no momento. Por favor, tente novamente mais tarde.</string>
     <string name="about_app_name">PixelMúsica</string>
-    <string name="about_tagline">Leitor de música de código aberto desenvolvido com sua comunidade.</string>
+    <string name="about_tagline">Leitor de música de código aberto desenvolvido com a sua comunidade.</string>
     <string name="about_version_format">Versão v%1$s</string>
     <string name="about_contributions_format">%1$d contribuição.</string>
     <string name="screen_about">Sobre</string>
@@ -208,8 +208,8 @@
     <string name="dash_music_folders">Pastas de música</string>
     <string name="dash_action_sync">Sincronizar</string>
     <string name="dash_playlists_empty_title">Nenhuma playlist sincronizada ainda</string>
-    <string name="dash_playlists_empty_hint_subsonic">Toque em sincronizar para buscar suas playlists</string>
-    <string name="dash_playlists_empty_hint_jellyfin">Toque em sincronizar para buscar suas playlists do Jellyfin</string>
+    <string name="dash_playlists_empty_hint_subsonic">Toque em sincronizar para buscar a suas playlists</string>
+    <string name="dash_playlists_empty_hint_jellyfin">Toque em sincronizar para buscar as suas playlists do Jellyfin</string>
     <string name="dash_no_folders_yet">Nenhuma pasta adicionada ainda</string>
     <string name="dash_tap_plus_add_drive_folder">Toque em + para adicionar uma pasta do Drive</string>
     <string name="dash_quick_actions">Ações rápidas</string>
