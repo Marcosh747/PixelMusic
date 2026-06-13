@@ -216,7 +216,7 @@
     
     <string name="presentation_batch_f_add_channel_sheet_title">Adicionar canal</string>
     <string name="presentation_batch_f_add_channel_sheet_subtitle">Procure um canal público do Telegram para sincronizar suas músicas</string>
-    <string name="presentation_batch_f_channel_search_placeholder">\@nome do canal ou link</string>
+    <string name="presentation_batch_f_channel_search_placeholder">@nome do canal ou link</string>
     <string name="presentation_batch_f_cd_search">Procurar</string>
     <string name="presentation_batch_f_searching">Procurando…</string>
     <string name="presentation_batch_f_search_channel_title">Procure um canal</string>
