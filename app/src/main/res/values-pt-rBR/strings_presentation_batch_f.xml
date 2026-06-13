@@ -33,7 +33,7 @@
     <string name="presentation_batch_f_ai_preset_strict_librarian_name">Bibliotecário Estrito</string>
     <string name="presentation_batch_f_ai_preset_strict_librarian_prompt">Você é um arquiteto de banco de dados de música cirúrgica. Sua lógica é impulsionada pela precisão absoluta dos metadados e pela adesão categórica rígida. Minimize a descoberta algorítmica em favor da consistência estrita de gênero, da correspondência de nível de energia e da maximização da recuperação de preferências altamente específicas definidas pelo usuário.</string>
     <string name="presentation_batch_f_ai_preset_atmospheric_guide_name">Guia Atmosférico</string>
-    <string name="presentation_batch_f_ai_preset_atmospheric_guide_prompt">Você é um mestre em texturas ambientais e fluxo de baixa energia. Concentre-se exclusivamente em faixas que facilitam um estado de 'foco profundo' ou 'tranquilidade'. Priorize o calor acústico, arranjos minimalistas e transições suaves, evitando estritamente sons altamente transitórios ou mudanças repentinas na faixa dinâmica.</string>
+    <string name="presentation_batch_f_ai_preset_atmospheric_guide_prompt">Você é um mestre em texturas ambientais e fluxo de baixa energia. Concentre-se exclusivamente em faixas que facilitam um estado de \'foco profundo\' ou \'tranquilidade\'. Priorize o calor acústico, arranjos minimalistas e transições suaves, evitando estritamente sons altamente transitórios ou mudanças repentinas na faixa dinâmica.</string>
     <string name="presentation_batch_f_ai_preset_sonic_enthusiast_name">Entusiasta Sônico</string>
     <string name="presentation_batch_f_ai_preset_sonic_enthusiast_prompt">Você é um analista audiófilo focado na complexidade da produção e na instrumentação. Priorize faixas caracterizadas por alta faixa dinâmica, polirritmos complexos e qualidade de som superior. Dê preferência a peças de escuta ativa que recompensem o ouvinte por prestar atenção à fidelidade técnica e aos detalhes do arranjo.</string>
     <string name="presentation_batch_f_ai_preset_energy_catalyst_name">Catalisador de Energia</string>
@@ -122,7 +122,7 @@
     <string name="presentation_batch_f_exp_progress_bar_subtitle">Atrase a linha do tempo e os rótulos de tempo até que a expansão seja concluída.</string>
     <string name="presentation_batch_f_exp_playback_controls_title">Controles de reprodução</string>
     <string name="presentation_batch_f_exp_playback_controls_subtitle">Atrasar reprodução/pausa, busca e controles favoritos.</string>
-    <string name="presentation_batch_f_exp_delay_all_active_hint">Todos os componentes atrasados ​​estão ativos. Desative "Atrasar tudo" para personalizar cada parte.</string>
+    <string name="presentation_batch_f_exp_delay_all_active_hint">Todos os componentes atrasados ​​estão ativos. Desative \"Atrasar tudo\" para personalizar cada parte.</string>
     <string name="presentation_batch_f_exp_step2_placeholders_header">Passo 2 · Configurar o comportamento do espaço reservado</string>
     <string name="presentation_batch_f_exp_use_placeholders_title">Use espaços reservados para itens atrasados</string>
     <string name="presentation_batch_f_exp_use_placeholders_subtitle">Mantenha o layout estável renderizando espaços reservados leves enquanto os componentes aguardam a expansão.</string>
